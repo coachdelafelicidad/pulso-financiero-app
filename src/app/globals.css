@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --teal-deep: #06403C;
+  --teal: #0B5E58;
+  --teal-light: #0D736C;
+  --mint: #9AD9CF;
+  --green: #7DC242;
+  --cream: #F7F5F0;
+  --yellow: #F5A623;
+  --red: #E53E3E;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  h1, h2, h3, h4, h5 {
+    font-family: var(--font-poppins), system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 bg-green text-white font-semibold rounded-lg
+           hover:bg-green/90 transition-colors duration-200 font-display;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3 bg-transparent border-2 border-teal-deep
+           text-teal-deep font-semibold rounded-lg hover:bg-teal-deep hover:text-cream transition-colors
+           duration-200 font-display;
+  }
+
+  .card {
+    @apply bg-white rounded-xl border border-mint/30 p-6 shadow-sm;
+  }
+
+  .score-ring {
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* Input styles */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
