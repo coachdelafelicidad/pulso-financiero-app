@@ -1,4 +1,4 @@
-/** Configuración WebAuthn / Passkeys para Pulso Financiero */
+/** Configuración WebAuthn / Passkeys para Tu Pulso */
 
 export function getWebAuthnRpId(): string {
   const configured = process.env.WEBAUTHN_RP_ID?.trim();
