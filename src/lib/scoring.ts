@@ -14,17 +14,163 @@ export interface ScoreResult {
   score_general: number
 }
 
-export interface MonthlyInputs {
+export interface WeeklyInputs {
+  saldo_bancos_efectivo: number
+  egresos_semana: number
+  cobranza_pendiente: number
   ventas: number
-  gastos: number
-  efectivo: number
-  cobranza: number
 }
 
-export interface MonthlyScoreResult extends ScoreResult {
-  dias_cobertura: number
+export interface WeeklyScoreResult extends ScoreResult {
+  runway_meses: number
+  caja_proyectada: number
   margen_real: number
+  runwayNota?: string
 }
+
+// ── Helpers de calendario ──────────────────────────────────────────────────
+
+/** Semana del mes (1-4) basada en el día del mes. */
+export function getSemanaMes(date: Date): 1 | 2 | 3 | 4 {
+  const day = date.getDate()
+  if (day <= 7) return 1
+  if (day <= 14) return 2
+  if (day <= 21) return 3
+  return 4
+}
+
+/**
+ * Factor de cobrabilidad estimada según la semana del mes.
+ * Semana 1 → 100%, 2 → 75%, 3 → 50%, 4 → 25%.
+ */
+export function getFactorCobranza(date: Date): number {
+  const semana = getSemanaMes(date)
+  const factores: Record<1 | 2 | 3 | 4, number> = { 1: 1.0, 2: 0.75, 3: 0.50, 4: 0.25 }
+  return factores[semana]
+}
+
+/** Semanas que faltan para terminar el mes en curso. */
+export function getSemanasRestantesMes(date: Date): number {
+  const year = date.getFullYear()
+  const month = date.getMonth()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  return (daysInMonth - date.getDate()) / 7
+}
+
+/** ISO date YYYY-MM-DD del lunes de la semana actual. */
+export function getWeekStartISO(date: Date = new Date()): string {
+  const d = new Date(date)
+  const day = d.getDay()
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+  d.setDate(diff)
+  return d.toISOString().split('T')[0]
+}
+
+// ── Runway (meses de operación a 8 semanas) ────────────────────────────────
+
+/**
+ * Calcula runway con media truncada sobre las últimas 8 semanas de egresos.
+ * Elimina la semana más alta y la más baja antes de promediar.
+ * Si hay menos de 8 registros usa los disponibles y adjunta una nota.
+ */
+export function calcularRunway(
+  historialEgresos: number[],
+  saldoBancosEfectivo: number,
+): { runway_meses: number; nota?: string } {
+  const semanas = historialEgresos.filter((v) => Number.isFinite(v) && v >= 0)
+
+  if (semanas.length === 0) {
+    return { runway_meses: 0 }
+  }
+
+  let nota: string | undefined
+  let muestra = [...semanas].slice(0, 8)
+
+  if (muestra.length < 8) {
+    nota = 'Tu promedio de cobertura se estabilizará tras 8 semanas de registro'
+  }
+
+  // Media truncada: elimina max y min si hay al menos 3 datos
+  if (muestra.length >= 3) {
+    const sorted = [...muestra].sort((a, b) => a - b)
+    muestra = sorted.slice(1, sorted.length - 1)
+  }
+
+  const gastoSemanalBase = muestra.reduce((s, v) => s + v, 0) / muestra.length
+  const gastoMensualEstabilizado = gastoSemanalBase * 4.33
+
+  const runway_meses =
+    gastoMensualEstabilizado > 0
+      ? Math.round((saldoBancosEfectivo / gastoMensualEstabilizado) * 10) / 10
+      : 0
+
+  return { runway_meses, nota }
+}
+
+// ── Score semanal principal ────────────────────────────────────────────────
+
+/**
+ * Calcula el score de salud financiera a partir de los 4 inputs semanales.
+ * La cobranza se degrada automáticamente según la semana del mes.
+ * El runway usa la media truncada del historial de egresos.
+ */
+export function calcularScoreSemanal(
+  inputs: WeeklyInputs,
+  historialEgresos: number[] = [],
+  date: Date = new Date(),
+): WeeklyScoreResult {
+  const { saldo_bancos_efectivo, egresos_semana, cobranza_pendiente, ventas } = inputs
+
+  // Proyección de caja — ventas excluidas del disponible
+  const factorCobranza = getFactorCobranza(date)
+  const semanasRestantes = getSemanasRestantesMes(date)
+  const caja_proyectada =
+    saldo_bancos_efectivo +
+    cobranza_pendiente * factorCobranza -
+    egresos_semana * semanasRestantes
+
+  // Runway con historial (incluye la semana actual como primera entrada)
+  const egresosConActual = [egresos_semana, ...historialEgresos]
+  const { runway_meses, nota: runwayNota } = calcularRunway(egresosConActual, saldo_bancos_efectivo)
+
+  // Margen real de la semana
+  const margen_real =
+    ventas > 0 ? Math.round(((ventas - egresos_semana) / ventas) * 1000) / 10 : 0
+
+  // Score Liquidez: runway → 0-100 (0 meses = 0, 6+ meses = 100)
+  const score_liquidez = Math.min(100, Math.round((runway_meses / 6) * 100))
+
+  // Score Rentabilidad: margen → 0-100 (≤0% = 0, ≥30% = 100)
+  const score_rentabilidad = Math.min(
+    100,
+    Math.max(0, Math.round((margen_real / 30) * 100)),
+  )
+
+  // Score Planeación: cobranza pendiente como ratio de ventas (penalización)
+  // 0% cobranza pendiente = 100, 50%+ = 0
+  const cobRatio = ventas > 0 ? cobranza_pendiente / ventas : 0
+  const score_planeacion = Math.min(
+    100,
+    Math.max(0, Math.round((1 - cobRatio / 0.5) * 100)),
+  )
+
+  const score_general = Math.round(
+    (score_liquidez + score_rentabilidad + score_planeacion) / 3,
+  )
+
+  return {
+    score_liquidez,
+    score_rentabilidad,
+    score_planeacion,
+    score_general,
+    runway_meses,
+    caja_proyectada: Math.round(caja_proyectada),
+    margen_real,
+    runwayNota,
+  }
+}
+
+// ── Quiz (sin cambios) ─────────────────────────────────────────────────────
 
 /**
  * Fórmula oficial del quiz de 6 preguntas.
@@ -44,44 +190,7 @@ export function calcularScoreQuiz(answers: QuizAnswers): ScoreResult {
   }
 }
 
-/**
- * Score basado en los 4 números del plan mensual.
- * Convierte inputs cuantitativos a la misma escala 0-100.
- */
-export function calcularScoreMensual(inputs: MonthlyInputs): MonthlyScoreResult {
-  const { ventas, gastos, efectivo, cobranza } = inputs
-
-  // Días de cobertura: efectivo / (gastos / 30)
-  const gastosDiarios = gastos / 30
-  const dias_cobertura = gastosDiarios > 0 ? efectivo / gastosDiarios : 0
-
-  // Margen real: (ventas - gastos) / ventas × 100
-  const margen_real = ventas > 0 ? ((ventas - gastos) / ventas) * 100 : 0
-
-  // Score Liquidez: días de cobertura → 0-100
-  // 0 días = 0, 60+ días = 100
-  const score_liquidez = Math.min(100, Math.round((dias_cobertura / 60) * 100))
-
-  // Score Rentabilidad: margen real → 0-100
-  // ≤0% = 0, ≥30% = 100
-  const score_rentabilidad = Math.min(100, Math.max(0, Math.round((margen_real / 30) * 100)))
-
-  // Score Planeación: cobranza como % de ventas → penalización
-  // 0% cobranza pendiente = 100, 50%+ = 0
-  const cobRatio = ventas > 0 ? cobranza / ventas : 0
-  const score_planeacion = Math.min(100, Math.max(0, Math.round((1 - cobRatio / 0.5) * 100)))
-
-  const score_general = Math.round((score_liquidez + score_rentabilidad + score_planeacion) / 3)
-
-  return {
-    score_liquidez,
-    score_rentabilidad,
-    score_planeacion,
-    score_general,
-    dias_cobertura: Math.round(dias_cobertura),
-    margen_real: Math.round(margen_real * 10) / 10,
-  }
-}
+// ── Semáforo ───────────────────────────────────────────────────────────────
 
 export type Semaforo = 'verde' | 'amarillo' | 'rojo'
 

@@ -50,3 +50,147 @@ input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
+/* Slider premium del simulador de estrés (Quiet Luxury) */
+.okm-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(27, 38, 36, 0.12);
+  outline: none;
+  cursor: pointer;
+}
+
+.okm-range:focus-visible {
+  box-shadow: 0 0 0 4px rgba(125, 194, 66, 0.18);
+}
+
+.okm-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #06403c;
+  border: 3px solid #f7f5f0;
+  box-shadow: 0 2px 6px rgba(6, 64, 60, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.okm-range::-webkit-slider-thumb:hover {
+  transform: scale(1.08);
+  background: #7dc242;
+}
+
+.okm-range::-webkit-slider-thumb:active {
+  transform: scale(0.96);
+  background: #7dc242;
+}
+
+.okm-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #06403c;
+  border: 3px solid #f7f5f0;
+  box-shadow: 0 2px 6px rgba(6, 64, 60, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.okm-range::-moz-range-thumb:hover {
+  background: #7dc242;
+}
+
+.okm-range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(27, 38, 36, 0.12);
+}
+
+/* Reporte PDF — Reporte Ejecutivo completo del Dashboard */
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 1.4cm;
+    size: A4;
+  }
+
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #1b2624 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  #dashboard-report {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 1.25rem !important;
+  }
+
+  .executive-report-letterhead {
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1.5px solid rgba(6, 64, 60, 0.22);
+  }
+
+  .report-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+    border-color: rgba(6, 64, 60, 0.12) !important;
+  }
+
+  .print-chart-container,
+  .recharts-responsive-container {
+    height: 280px !important;
+    min-height: 280px !important;
+    overflow: visible !important;
+  }
+
+  .print-chart svg,
+  .report-section svg {
+    overflow: visible !important;
+  }
+
+  #simulador-estres {
+    background: #fff !important;
+    padding: 0 !important;
+    margin-top: 0.5rem !important;
+  }
+
+  #simulador-estres .stress-report-results {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1px solid rgba(6, 64, 60, 0.12) !important;
+    box-shadow: none !important;
+    border-radius: 12px !important;
+    padding: 1.25rem !important;
+  }
+
+  .okm-range {
+    display: none !important;
+  }
+}

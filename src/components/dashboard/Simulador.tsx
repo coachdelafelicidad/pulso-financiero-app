@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { PulsoScore } from '@/types/database'
-import { calcularScoreMensual, getSemaforo, SEMAFORO_COLORS } from '@/lib/scoring'
+import { calcularScoreSemanal, getSemaforo, SEMAFORO_COLORS } from '@/lib/scoring'
 
 interface SimuladorProps {
   lastScore: PulsoScore
@@ -12,11 +12,11 @@ export function Simulador({ lastScore }: SimuladorProps) {
   const [variacion, setVariacion] = useState(0) // -50 a +50 %
 
   const ventasSimuladas = lastScore.ventas * (1 + variacion / 100)
-  const sim = calcularScoreMensual({
+  const sim = calcularScoreSemanal({
     ventas: ventasSimuladas,
-    gastos: lastScore.gastos,
-    efectivo: lastScore.efectivo,
-    cobranza: lastScore.cobranza,
+    egresos_semana: lastScore.egresos_semana,
+    saldo_bancos_efectivo: lastScore.saldo_bancos_efectivo,
+    cobranza_pendiente: lastScore.cobranza_pendiente,
   })
 
   const color = SEMAFORO_COLORS[getSemaforo(sim.score_general)]
@@ -58,9 +58,9 @@ export function Simulador({ lastScore }: SimuladorProps) {
         </div>
         <div className="bg-cream rounded-lg p-3 text-center">
           <p className="text-lg font-bold font-display text-teal-deep">
-            {sim.dias_cobertura}
+            {sim.runway_meses.toFixed(1)}
           </p>
-          <p className="text-xs text-teal mt-0.5">días cobertura</p>
+          <p className="text-xs text-teal mt-0.5">meses cobertura</p>
         </div>
         <div className="bg-cream rounded-lg p-3 text-center">
           <p className="text-lg font-bold font-display text-teal-deep">
@@ -70,11 +70,11 @@ export function Simulador({ lastScore }: SimuladorProps) {
         </div>
       </div>
 
-      {variacion <= -20 && sim.dias_cobertura < 30 && (
+      {variacion <= -20 && sim.runway_meses < 1 && (
         <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
           <p className="text-xs text-red-700 font-medium">
-            Con esa caída en ventas, tendrías menos de {sim.dias_cobertura} días
-            de efectivo. Es el momento de revisar tu plan de contingencia.
+            Con esa caída en ventas, tendrías menos de 1 mes de cobertura.
+            Es el momento de revisar tu plan de contingencia.
           </p>
         </div>
       )}

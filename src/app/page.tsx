@@ -1,166 +1,207 @@
 import Link from 'next/link'
 
-export default function LandingPage() {
-  return (
-    <main className="min-h-screen bg-cream">
-      {/* Nav */}
-      <nav className="flex items-center justify-between px-6 py-5 max-w-5xl mx-auto">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-teal-deep flex items-center justify-center">
-            <span className="text-mint font-display font-bold text-sm">P</span>
-          </div>
-          <span className="font-display font-semibold text-teal-deep">Pulso Financiero</span>
-        </div>
-        <Link
-          href="/login"
-          className="text-sm font-medium text-teal hover:text-teal-deep transition-colors"
-        >
-          Iniciar sesión
-        </Link>
-      </nav>
-
-      {/* Hero */}
-      <section className="max-w-4xl mx-auto px-6 pt-20 pb-24 text-center">
-        <p className="inline-block text-sm font-medium text-teal bg-mint/20 px-4 py-1.5 rounded-full mb-6">
-          Por Okomos Finanzas
-        </p>
-        <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-teal-deep leading-tight mb-6">
-          ¿Tu empresa está sana<br />
-          <span className="text-green">financieramente?</span>
-        </h1>
-        <p className="text-lg text-teal max-w-xl mx-auto mb-10 leading-relaxed">
-          Captura 4 números una vez al mes. En menos de 5 minutos sabes
-          exactamente dónde está tu liquidez, tu margen real y tu riesgo —
-          sin conectar banco ni hablar con tu contador.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link href="/login" className="btn-primary text-base px-8 py-4">
-            Empieza gratis
-          </Link>
-          <Link href="https://okomosfinanzas.com/pulso-quiz.html" className="btn-secondary text-base px-8 py-4">
-            Ver el quiz gratuito
-          </Link>
-        </div>
-        <p className="text-sm text-teal/60 mt-4">
-          Plan mensual: $499 MXN/mes · Cancela cuando quieras
-        </p>
-      </section>
-
-      {/* Qué obtienes */}
-      <section className="bg-white py-20">
-        <div className="max-w-5xl mx-auto px-6">
-          <h2 className="font-display text-3xl font-bold text-teal-deep text-center mb-4">
-            Lo que cambia con Pulso
-          </h2>
-          <p className="text-center text-teal mb-12 max-w-lg mx-auto">
-            Cuatro números al mes. Una imagen clara de tu negocio.
-          </p>
-          <div className="grid md:grid-cols-3 gap-6">
-            {FEATURES.map((f) => (
-              <div key={f.title} className="card">
-                <div className="text-3xl mb-4">{f.icon}</div>
-                <h3 className="font-display font-semibold text-teal-deep mb-2">{f.title}</h3>
-                <p className="text-sm text-teal leading-relaxed">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Cómo funciona */}
-      <section className="py-20 max-w-4xl mx-auto px-6">
-        <h2 className="font-display text-3xl font-bold text-teal-deep text-center mb-12">
-          Tres pasos, una vez al mes
-        </h2>
-        <div className="space-y-8">
-          {STEPS.map((step, i) => (
-            <div key={step.title} className="flex gap-6 items-start">
-              <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-teal-deep/5 border border-mint
-                              flex items-center justify-center font-display font-bold text-teal-deep">
-                {i + 1}
-              </div>
-              <div>
-                <h3 className="font-display font-semibold text-teal-deep mb-1">{step.title}</h3>
-                <p className="text-teal leading-relaxed">{step.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Para quién */}
-      <section className="bg-teal-deep py-20">
-        <div className="max-w-3xl mx-auto px-6 text-center">
-          <h2 className="font-display text-3xl font-bold text-cream mb-6">
-            Para dueños de PyMEs que ya venden bien<br />pero sienten que el dinero no alcanza
-          </h2>
-          <p className="text-mint text-lg mb-10">
-            Si tienes entre $50,000 y $5,000,000 MXN en ventas al mes y operas
-            solo con un contador para cumplimiento fiscal, Pulso te da la capa
-            estratégica que falta.
-          </p>
-          <Link href="/login" className="btn-primary">
-            Conoce tu Score hoy
-          </Link>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-8 text-center text-sm text-teal/50 border-t border-mint/20">
-        <p>Pulso Financiero es un producto de{' '}
-          <a href="https://okomosfinanzas.com" className="text-teal hover:text-teal-deep transition-colors">
-            Okomos Finanzas
-          </a>
-          {' '}· Mario Alberto Mojica Marín · CFO Externo</p>
-      </footer>
-    </main>
-  )
-}
+const STRIPE_CHECKOUT = 'https://buy.stripe.com/4gM4graxv5914i47kJ8ww00'
+const NASIO_COMMUNITY = 'https://nas.com/pulsofinanciero'
+const OKOMOS_SITE = 'https://okomosfinanzas.com/'
 
 const FEATURES = [
   {
-    icon: '🟢',
+    title: 'Cuatro indicadores a la semana',
+    body: 'Registra Ventas, Gastos, Efectivo y Cobranza. Son los números que definen si tu negocio respira bien.',
+  },
+  {
     title: 'Score con semáforo',
-    desc: 'Tu salud financiera en un número (0-100) y tres colores. Sin jerga. Sin que tengas que interpretar nada.',
+    body: 'Un puntaje de salud financiera con verde, amarillo o rojo. Sabes de un vistazo dónde estás parado.',
   },
   {
-    icon: '📈',
-    title: 'Historial mes a mes',
-    desc: 'Ve si vas mejorando o empeorando con el tiempo. El contexto importa tanto como el número de hoy.',
+    title: 'Tendencia semana a semana',
+    body: 'Gráficas de histórico para ver si tu caja mejora, se estanca o retrocede con el tiempo.',
   },
   {
-    icon: '⚠️',
-    title: 'Alertas antes del problema',
-    desc: 'Si algún indicador entra en zona roja, te avisamos por correo antes de que se convierta en emergencia.',
+    title: 'Simulador integrado',
+    body: '¿Qué pasa si tus ventas bajan 20 %? Calculas cuánto tiempo aguanta tu negocio antes de apretar.',
   },
-  {
-    icon: '🧮',
-    title: 'Calculadora de cobertura',
-    desc: '¿Cuántos días aguanta tu negocio si no entra un peso más? Lo calculamos automáticamente.',
-  },
-  {
-    icon: '📉',
-    title: 'Simulador de escenarios',
-    desc: '¿Qué pasa si tus ventas bajan 20%? ¿O si subes precios? Explora antes de decidir.',
-  },
-  {
-    icon: '🤝',
-    title: 'CFO humano disponible',
-    desc: 'Si tu Score sugiere que necesitas más que la app, Mario Mojica puede acompañarte de forma directa.',
-  },
-]
+] as const
 
-const STEPS = [
-  {
-    title: 'Captura tus 4 números',
-    desc: 'Ventas del mes, gastos operativos, efectivo disponible y lo que te deben clientes. Nada más.',
-  },
-  {
-    title: 'Revisa tu Score y semáforo',
-    desc: 'Liqudez, Rentabilidad y Planeación — cada uno con su color. Sabes exactamente dónde poner el ojo.',
-  },
-  {
-    title: 'Compara con el mes anterior',
-    desc: 'La gráfica de evolución te muestra si vas en la dirección correcta. La mejora se vuelve visible.',
-  },
-]
+function ExternalCta({
+  href,
+  children,
+  variant = 'primary',
+}: {
+  href: string
+  children: React.ReactNode
+  variant?: 'primary' | 'secondary'
+}) {
+  const base =
+    'inline-flex items-center justify-center rounded-lg px-6 py-3.5 font-display text-base font-semibold transition-colors duration-200'
+  const styles =
+    variant === 'primary'
+      ? `${base} bg-green text-white hover:bg-green/90`
+      : `${base} border-2 border-teal-deep bg-transparent text-teal-deep hover:bg-teal-deep hover:text-cream`
+
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className={styles}>
+      {children}
+    </a>
+  )
+}
+
+export default function LandingPage() {
+  return (
+    <div className="min-h-screen bg-cream text-[#1B2624]">
+      {/* Header */}
+      <header className="border-b border-mint/40 bg-cream/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4 sm:px-8">
+          <Link href="/" className="flex items-center gap-3">
+            <img src="/logo.png" alt="Okomos Finanzas" className="h-10 w-auto sm:h-11" />
+          </Link>
+          <Link
+            href="/login"
+            className="font-display text-sm font-semibold text-teal-deep transition-colors hover:text-teal-light sm:text-base"
+          >
+            Iniciar sesión
+          </Link>
+        </div>
+      </header>
+
+      <main>
+        {/* Hero */}
+        <section className="border-b border-mint/30 bg-teal-deep px-5 py-16 text-cream sm:px-8 sm:py-20">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="font-display text-sm font-medium uppercase tracking-wide text-mint/90">
+              Pulso Financiero
+            </p>
+            <h1 className="mt-4 font-display text-3xl font-bold leading-tight sm:text-4xl lg:text-[2.75rem]">
+              Mide el Pulso de tu empresa, semana a semana.
+            </h1>
+            <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-mint/95 sm:text-lg">
+              Cuatro números cada semana. En menos de 5 minutos sabes si tu liquidez, tu margen y tu
+              cobranza van en la dirección correcta — o si necesitas actuar antes de que sea
+              urgente.
+            </p>
+            <div className="mt-10 flex flex-col items-center gap-3">
+              <ExternalCta href={STRIPE_CHECKOUT}>Activar mi acceso — $499/mes</ExternalCta>
+              <p className="max-w-md text-sm text-mint/80">
+                Cancela cuando quieras. Sin contratos. Sin conectar banco.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Features */}
+        <section className="px-5 py-16 sm:px-8 sm:py-20">
+          <div className="mx-auto max-w-5xl">
+            <h2 className="text-center font-display text-2xl font-bold text-teal-deep sm:text-3xl">
+              Lo que incluye tu tablero
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-center text-[#1B2624]/80">
+              Registro manual y privado. Tú capturas tus cifras; el sistema te ayuda a leerlas.
+            </p>
+            <ul className="mt-12 grid gap-6 sm:grid-cols-2">
+              {FEATURES.map((feature) => (
+                <li
+                  key={feature.title}
+                  className="rounded-2xl border border-mint/40 bg-white p-6 shadow-sm"
+                >
+                  <span
+                    className="mb-4 inline-block h-2 w-10 rounded-full bg-green"
+                    aria-hidden
+                  />
+                  <h3 className="font-display text-lg font-bold text-teal-deep">{feature.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#1B2624]/85">{feature.body}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* Comunidad PRO */}
+        <section className="border-y border-mint/30 bg-white px-5 py-16 sm:px-8 sm:py-20">
+          <div className="mx-auto max-w-5xl">
+            <div className="rounded-2xl border border-mint/50 bg-cream p-8 sm:p-10 lg:p-12">
+              <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr] lg:items-center">
+                <div>
+                  <h2 className="font-display text-2xl font-bold text-teal-deep sm:text-3xl">
+                    No te quedes solo con los números — aprende a leerlos.
+                  </h2>
+                  <p className="mt-4 text-base leading-relaxed text-[#1B2624]/90">
+                    El App te dice qué está pasando con tu negocio, semana a semana. La Comunidad
+                    PRO en Nas.com te ayuda a entender qué hacer con esa información: sesiones en
+                    vivo por Zoom dos veces al mes con Mario, un catálogo de sesiones grabadas, y
+                    un espacio para resolver dudas directamente con él.
+                  </p>
+                  <p className="mt-4 text-base leading-relaxed text-[#1B2624]/90">
+                    Son dos productos independientes — puedes usar el App por su cuenta, o
+                    complementarlo con la Comunidad cuando quieras ir más a fondo en cómo tomar
+                    mejores decisiones financieras.
+                  </p>
+                </div>
+                <div className="flex flex-col items-start gap-4 lg:items-stretch">
+                  <ul className="w-full space-y-3 text-sm text-[#1B2624]/85">
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-green" aria-hidden />
+                      Dos sesiones en vivo al mes con Mario
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-green" aria-hidden />
+                      Biblioteca de sesiones grabadas
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-green" aria-hidden />
+                      Espacio para dudas entre sesiones
+                    </li>
+                  </ul>
+                  <ExternalCta href={NASIO_COMMUNITY} variant="secondary">
+                    Conocer la Comunidad PRO
+                  </ExternalCta>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Cierre */}
+        <section className="px-5 py-16 sm:px-8 sm:py-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="font-display text-2xl font-bold text-teal-deep sm:text-3xl">
+              Empieza con cuatro números esta semana
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-[#1B2624]/85">
+              Activa tu acceso, entra a tu tablero y registra tu primera semana cuando estés listo.
+            </p>
+            <div className="mt-8 flex flex-col items-center gap-4">
+              <ExternalCta href={STRIPE_CHECKOUT}>Activar mi acceso — $499/mes</ExternalCta>
+              <Link
+                href="/login"
+                className="font-display text-base font-semibold text-teal-deep underline-offset-4 transition-colors hover:text-teal-light hover:underline"
+              >
+                Iniciar sesión
+              </Link>
+              <p className="text-sm text-[#1B2624]/65">¿Ya compraste? Entra con el correo que usaste al pagar.</p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-mint/30 bg-teal-deep px-5 py-10 text-cream sm:px-8">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="text-sm leading-relaxed text-mint/90">
+            ¿Buscas dirección financiera completa para tu empresa?{' '}
+            <a
+              href={OKOMOS_SITE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-white underline underline-offset-4 transition-colors hover:text-mint"
+            >
+              Conoce nuestros servicios de CFO Externo en okomosfinanzas.com
+            </a>
+          </p>
+          <p className="mt-6 text-xs text-mint/60">
+            © {new Date().getFullYear()} Okomos Finanzas · Pulso Financiero
+          </p>
+        </div>
+      </footer>
+    </div>
+  )
+}
