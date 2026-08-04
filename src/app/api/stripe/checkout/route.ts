@@ -55,7 +55,7 @@ export async function POST() {
               price_data: {
                 currency: "mxn",
                 product_data: {
-                  name: "Pulso Financiero Premium",
+                  name: "Tu Pulso Premium",
                   description: "Tablero ejecutivo, captura semanal y simulador de tesorería",
                 },
                 unit_amount: 49900,

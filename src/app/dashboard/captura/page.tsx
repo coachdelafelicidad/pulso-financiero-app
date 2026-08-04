@@ -241,7 +241,7 @@ export default function CapturaPage() {
             </span>
           </div>
           <h1 className="mb-3 font-poppins text-[30px] font-semibold -tracking-[0.02em] text-[#06403C]">
-            Registrar el Pulso de la Semana
+            Actualiza tu Pulso
           </h1>
           <p className="max-w-[560px] text-[15px] leading-relaxed text-black/55">
             Invierte menos de 5 minutos para tomar el control absoluto de tu tesorería. Captura los 4 números clave de esta semana y tu Score de Salud se recalcula al instante.

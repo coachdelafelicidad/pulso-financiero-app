@@ -579,7 +579,7 @@ function DashboardContent() {
               <div className="font-poppins text-[22px] font-semibold tracking-tight text-[#06403C]">
                 Okomos Finanzas
               </div>
-              <div className="mt-1 text-[14px] text-black/55">Reporte Ejecutivo — Pulso Financiero</div>
+              <div className="mt-1 text-[14px] text-black/55">Reporte Ejecutivo — Tu Pulso por Okomos</div>
             </div>
             <div className="text-right text-[13px] leading-relaxed text-black/55">
               <div className="font-poppins font-medium text-[#06403C]">{displayIdentity.company}</div>
@@ -608,7 +608,7 @@ function DashboardContent() {
                 Suscripción activa
               </div>
               <p className="font-poppins text-[15px] font-medium text-[#06403C]">
-                ¡Bienvenido a Pulso Financiero Premium! Tu pago fue procesado correctamente.
+                ¡Bienvenido a Tu Pulso Premium! Tu pago fue procesado correctamente.
               </p>
             </div>
             <button
@@ -639,10 +639,10 @@ function DashboardContent() {
         <section className="report-section flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="mb-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7DC242]">
-              Pulso financiero · semana 32
+              Tu Pulso · esta semana
             </div>
             <h1 className="font-poppins text-[26px] font-semibold -tracking-[0.02em] text-[#06403C]">
-              Resumen de salud
+              Tu Pulso esta semana
             </h1>
           </div>
           <Link

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { BiometricLoginButton, useBiometricLoginAvailability } from '@/components/auth/BiometricLoginButton'
 import { BIOMETRIC_EMAIL_KEY } from '@/lib/auth/session-config'
 
-const SITE_URL = 'https://app.pulsofinanciero.okomosfinanzas.com'
+const SITE_URL = 'https://app.okomosfinanzas.com'
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login')

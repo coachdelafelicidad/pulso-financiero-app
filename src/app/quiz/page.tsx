@@ -299,7 +299,7 @@ function PaywallGate() {
         </div>
 
         <p className="text-center text-xs text-mint/70 mt-6">
-          Okomos Finanzas · Pulso Financiero
+          Okomos Finanzas · Tu Pulso
         </p>
       </div>
     </main>

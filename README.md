@@ -1,6 +1,7 @@
-# Pulso Financiero — App
+# Tu Pulso por Okomos — App
 
-Sistema de seguimiento financiero para PyMEs mexicanas.  
+Sistema de seguimiento financiero semanal para PyMEs mexicanas.  
+URL de producción: https://app.okomosfinanzas.com  
 Plan Mensual: $499 MXN/mes.
 
 ---

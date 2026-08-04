@@ -1,4 +1,4 @@
-const FROM = "Pulso Financiero <hola@okomosfinanzas.com>";
+const FROM = "Tu Pulso · Okomos <hola@okomosfinanzas.com>";
 
 export async function sendPasswordResetOtpEmail(to: string, otp: string): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
@@ -9,7 +9,7 @@ export async function sendPasswordResetOtpEmail(to: string, otp: string): Promis
 
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    "https://app.pulsofinanciero.okomosfinanzas.com";
+    "https://app.okomosfinanzas.com";
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -20,14 +20,14 @@ export async function sendPasswordResetOtpEmail(to: string, otp: string): Promis
     body: JSON.stringify({
       from: FROM,
       to: [to],
-      subject: "Tu código para restablecer contraseña — Pulso Financiero",
+      subject: "Tu código para restablecer contraseña — Tu Pulso · Okomos",
       text: `Tu código de verificación es: ${otp}
 
 Ingresa este código en ${appUrl}/reset-password junto con tu correo y tu nueva contraseña.
 
 El código expira en 15 minutos. Si no solicitaste este cambio, ignora este correo.
 
-— Pulso Financiero by Okomos Finanzas`,
+— Tu Pulso · Okomos by Okomos Finanzas`,
     }),
   });
 

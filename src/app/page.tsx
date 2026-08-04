@@ -69,7 +69,7 @@ export default function LandingPage() {
         <section className="border-b border-mint/30 bg-teal-deep px-5 py-16 text-cream sm:px-8 sm:py-20">
           <div className="mx-auto max-w-3xl text-center">
             <p className="font-display text-sm font-medium uppercase tracking-wide text-mint/90">
-              Pulso Financiero
+              Tu Pulso por Okomos
             </p>
             <h1 className="mt-4 font-display text-3xl font-bold leading-tight sm:text-4xl lg:text-[2.75rem]">
               Mide el Pulso de tu empresa, semana a semana.
@@ -198,7 +198,7 @@ export default function LandingPage() {
             </a>
           </p>
           <p className="mt-6 text-xs text-mint/60">
-            © {new Date().getFullYear()} Okomos Finanzas · Pulso Financiero
+            © {new Date().getFullYear()} Okomos Finanzas · Tu Pulso
           </p>
         </div>
       </footer>

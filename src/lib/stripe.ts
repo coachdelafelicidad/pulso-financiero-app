@@ -96,7 +96,7 @@ export function appOrigin(): string {
   const vercel = process.env.VERCEL_URL?.trim();
   if (vercel) return `https://${vercel}`;
 
-  return "https://app.pulsofinanciero.okomosfinanzas.com";
+  return "https://app.okomosfinanzas.com";
 }
 
 export function stripePriceId(): string | null {
