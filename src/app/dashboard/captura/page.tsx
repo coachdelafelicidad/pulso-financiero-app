@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   calcularScoreSemanal,
   getFactorCobranza,
+  getSemanaMes,
   getWeekStartISO,
 } from "@/lib/scoring";
 import { createClient } from "@/lib/supabase/client";
@@ -138,6 +139,7 @@ export default function CapturaPage() {
 
   // Transparencia de cobranza
   const factorCobranza = getFactorCobranza(new Date());
+  const semanaMes = getSemanaMes(new Date());
   const cobranzaPonderada = Math.round(parsed.cobranza_pendiente * factorCobranza);
   const showCobranzaMsg = parsed.cobranza_pendiente > 0;
 
@@ -283,12 +285,11 @@ export default function CapturaPage() {
           {showCobranzaMsg && (
             <div className="rounded-2xl border border-[#9AD9CF]/40 bg-[#9AD9CF]/10 px-5 py-4">
               <p className="text-[13.5px] leading-relaxed text-[#06403C]">
-                Tienes{" "}
-                <span className="font-semibold">{mxn(parsed.cobranza_pendiente)}</span>{" "}
-                en cobranza. Estimamos ingresar{" "}
-                <span className="font-semibold">{mxn(cobranzaPonderada)}</span> este mes
-                según la semana de cobranza ({Math.round(factorCobranza * 100)}%
-                cobrabilidad estimada).
+                Cobranza pendiente:{" "}
+                <span className="font-semibold">{mxn(parsed.cobranza_pendiente)}</span>
+                {" "}— Estimado a cobrar este mes:{" "}
+                <span className="font-semibold">{mxn(cobranzaPonderada)}</span>.{" "}
+                Semana {semanaMes} del ciclo — aplicamos {Math.round(factorCobranza * 100)}% al saldo reportado.
               </p>
             </div>
           )}
