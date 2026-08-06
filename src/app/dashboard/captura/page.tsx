@@ -186,11 +186,10 @@ export default function CapturaPage() {
 
       const base = {
         user_id: user.id,
-        ventas: parsed.ventas,
-        egresos_semana: parsed.egresos_semana,
-        saldo_bancos_efectivo: parsed.saldo_bancos_efectivo,
-        cobranza_pendiente: parsed.cobranza_pendiente,
         periodo_semana: periodoSemana,
+        saldo_bancos_efectivo: parsed.saldo_bancos_efectivo,
+        egresos_semana: parsed.egresos_semana,
+        cobranza_pendiente: parsed.cobranza_pendiente,
         runway_meses: score.runway_meses,
         caja_proyectada: score.caja_proyectada,
         score_liquidez: score.score_liquidez,
@@ -200,11 +199,19 @@ export default function CapturaPage() {
         margen_real: score.margen_real,
       };
 
+      console.log("[captura] upsert payload:", base);
+
       const { error: upsertError } = await supabase
         .from("pulso_scores")
         .upsert(base, { onConflict: "user_id,periodo_semana" });
 
       if (upsertError) {
+        console.error("[captura] upsertError:", {
+          message: upsertError.message,
+          details: upsertError.details,
+          hint: upsertError.hint,
+          code: upsertError.code,
+        });
         setError("No pudimos guardar tu pulso. Revisa tu conexión e inténtalo de nuevo.");
         setProcessing(false);
         return;
@@ -212,7 +219,8 @@ export default function CapturaPage() {
 
       router.push("/dashboard");
       router.refresh();
-    } catch {
+    } catch (err) {
+      console.error("[captura] catch inesperado:", err);
       setError("Ocurrió un error inesperado al guardar. Inténtalo de nuevo.");
       setProcessing(false);
     }

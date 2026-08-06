@@ -102,24 +102,32 @@ export default function QuizPage() {
 
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      await supabase.from('pulso_scores').upsert(
-        {
-          user_id: user.id,
-          ventas,
-          egresos_semana,
-          saldo_bancos_efectivo,
-          cobranza_pendiente,
-          periodo_semana: getWeekStartISO(),
-          runway_meses: scores.runway_meses,
-          caja_proyectada: scores.caja_proyectada,
-          score_liquidez: scores.score_liquidez,
-          score_rentabilidad: scores.score_rentabilidad,
-          score_planeacion: scores.score_planeacion,
-          score_general: scores.score_general,
-          margen_real: scores.margen_real,
-        },
-        { onConflict: 'user_id,periodo_semana' }
-      )
+      const payload = {
+        user_id: user.id,
+        periodo_semana: getWeekStartISO(),
+        saldo_bancos_efectivo,
+        egresos_semana,
+        cobranza_pendiente,
+        runway_meses: scores.runway_meses,
+        caja_proyectada: scores.caja_proyectada,
+        score_liquidez: scores.score_liquidez,
+        score_rentabilidad: scores.score_rentabilidad,
+        score_planeacion: scores.score_planeacion,
+        score_general: scores.score_general,
+        margen_real: scores.margen_real,
+      }
+      console.log('[quiz] upsert payload:', payload)
+      const { error: upsertError } = await supabase
+        .from('pulso_scores')
+        .upsert(payload, { onConflict: 'user_id,periodo_semana' })
+      if (upsertError) {
+        console.error('[quiz] upsertError:', {
+          message: upsertError.message,
+          details: upsertError.details,
+          hint: upsertError.hint,
+          code: upsertError.code,
+        })
+      }
     }
 
     setStep('resultado')
