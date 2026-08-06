@@ -41,6 +41,11 @@ export async function POST(req: NextRequest) {
     // ── 3. Leer payload ────────────────────────────────────────────────────
     const body = await req.json();
     const payload = {
+      // Columnas legacy NOT NULL — rellenar con 0 para compatibilidad con esquema viejo
+      efectivo: 0,
+      gastos: 0,
+      cobranza: 0,
+      dias_cobertura: 0,
       ...body,
       user_id: user.id, // forzar user_id al usuario autenticado
     };
