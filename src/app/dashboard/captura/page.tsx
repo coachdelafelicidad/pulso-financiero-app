@@ -187,17 +187,7 @@ export default function CapturaPage() {
       const base = {
         user_id: user.id,
         periodo_semana: periodoSemana,
-        ventas: parsed.ventas,
-        saldo_bancos_efectivo: parsed.saldo_bancos_efectivo,
-        egresos_semana: parsed.egresos_semana,
-        cobranza_pendiente: parsed.cobranza_pendiente,
-        runway_meses: score.runway_meses,
-        caja_proyectada: score.caja_proyectada,
-        score_liquidez: score.score_liquidez,
-        score_rentabilidad: score.score_rentabilidad,
-        score_planeacion: score.score_planeacion,
         score_general: score.score_general,
-        margen_real: score.margen_real,
       };
 
       console.log("[captura] upsert payload:", base);
