@@ -185,7 +185,6 @@ export default function CapturaPage() {
       const score = calcularScoreSemanal(parsed, historialEgresos);
 
       const payload = {
-        user_id: user.id,
         periodo_semana: periodoSemana,
         ventas: parsed.ventas,
         saldo_bancos_efectivo: parsed.saldo_bancos_efectivo,
@@ -202,44 +201,15 @@ export default function CapturaPage() {
 
       console.log("[captura] payload:", payload);
 
-      // Buscar si ya existe un registro para esta semana
-      const { data: existing, error: selectError } = await supabase
-        .from("pulso_scores")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("periodo_semana", periodoSemana)
-        .maybeSingle();
+      const res = await fetch("/api/pulso/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-      if (selectError) {
-        console.error("[captura] selectError:", selectError);
-        setError("No pudimos verificar tu registro semanal. Inténtalo de nuevo.");
-        setProcessing(false);
-        return;
-      }
-
-      let saveError;
-      if (existing?.id) {
-        // UPDATE — registro de esta semana ya existe
-        const { error } = await supabase
-          .from("pulso_scores")
-          .update(payload)
-          .eq("id", existing.id);
-        saveError = error;
-      } else {
-        // INSERT — primera captura de la semana
-        const { error } = await supabase
-          .from("pulso_scores")
-          .insert(payload);
-        saveError = error;
-      }
-
-      if (saveError) {
-        console.error("[captura] saveError:", {
-          message: saveError.message,
-          details: saveError.details,
-          hint: saveError.hint,
-          code: saveError.code,
-        });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error("[captura] api error:", err);
         setError("No pudimos guardar tu pulso. Revisa tu conexión e inténtalo de nuevo.");
         setProcessing(false);
         return;
