@@ -6,71 +6,102 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  // 1. Verificar sesión del usuario
-  const supabase = createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  try {
+    // ── 1. Verificar env vars ──────────────────────────────────────────────
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (authError || !user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
+    if (!supabaseUrl || !serviceKey) {
+      console.error("[api/pulso/save] env vars faltantes:", {
+        hasUrl: !!supabaseUrl,
+        hasKey: !!serviceKey,
+      });
+      return NextResponse.json(
+        { error: "Configuración de servidor incompleta", code: "ENV_MISSING" },
+        { status: 500 },
+      );
+    }
 
-  // 2. Leer payload
-  const body = await req.json();
+    // ── 2. Verificar sesión ────────────────────────────────────────────────
+    const supabase = createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  // Forzar user_id al usuario autenticado (seguridad)
-  const payload = { ...body, user_id: user.id };
+    console.log("[api/pulso/save] auth:", { userId: user?.id ?? null, authError: authError?.message ?? null });
 
-  // 3. Admin client con service role — sin restricciones de RLS
-  const supabaseAdmin = createSupabaseAdmin(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "No autorizado", detail: authError?.message },
+        { status: 401 },
+      );
+    }
 
-  // 4. ¿Existe ya un registro para esta semana?
-  const { data: existing, error: selectError } = await supabaseAdmin
-    .from("pulso_scores")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("periodo_semana", payload.periodo_semana)
-    .maybeSingle();
+    // ── 3. Leer payload ────────────────────────────────────────────────────
+    const body = await req.json();
+    const payload = {
+      ...body,
+      user_id: user.id, // forzar user_id al usuario autenticado
+    };
 
-  if (selectError) {
-    console.error("[api/pulso/save] selectError:", selectError);
-    return NextResponse.json(
-      { error: selectError.message, details: selectError.details },
-      { status: 500 },
-    );
-  }
+    console.log("[api/pulso/save] payload keys:", Object.keys(payload));
 
-  let saveError;
-  if (existing?.id) {
-    const { error } = await supabaseAdmin
+    // ── 4. Admin client (bypass RLS) ───────────────────────────────────────
+    const admin = createSupabaseAdmin(supabaseUrl, serviceKey);
+
+    // ── 5. Buscar registro existente esta semana ───────────────────────────
+    const { data: existing, error: selectError } = await admin
       .from("pulso_scores")
-      .update(payload)
-      .eq("id", existing.id);
-    saveError = error;
-  } else {
-    const { error } = await supabaseAdmin
-      .from("pulso_scores")
-      .insert(payload);
-    saveError = error;
-  }
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("periodo_semana", payload.periodo_semana)
+      .maybeSingle();
 
-  if (saveError) {
-    console.error("[api/pulso/save] saveError:", saveError);
-    return NextResponse.json(
-      {
-        error: saveError.message,
-        details: saveError.details,
-        hint: saveError.hint,
-        code: saveError.code,
-      },
-      { status: 500 },
-    );
-  }
+    if (selectError) {
+      console.error("[api/pulso/save] selectError:", selectError);
+      return NextResponse.json(
+        { error: selectError.message, details: selectError.details, hint: selectError.hint, code: selectError.code },
+        { status: 500 },
+      );
+    }
 
-  return NextResponse.json({ ok: true });
+    console.log("[api/pulso/save] existing:", existing?.id ?? "ninguno");
+
+    // ── 6. INSERT o UPDATE ────────────────────────────────────────────────
+    if (existing?.id) {
+      const { error: updateError } = await admin
+        .from("pulso_scores")
+        .update(payload)
+        .eq("id", existing.id);
+
+      if (updateError) {
+        console.error("[api/pulso/save] updateError:", updateError);
+        return NextResponse.json(
+          { error: updateError.message, details: updateError.details, hint: updateError.hint, code: updateError.code },
+          { status: 500 },
+        );
+      }
+    } else {
+      const { error: insertError } = await admin
+        .from("pulso_scores")
+        .insert(payload);
+
+      if (insertError) {
+        console.error("[api/pulso/save] insertError:", insertError);
+        return NextResponse.json(
+          { error: insertError.message, details: insertError.details, hint: insertError.hint, code: insertError.code },
+          { status: 500 },
+        );
+      }
+    }
+
+    console.log("[api/pulso/save] guardado OK para user:", user.id);
+    return NextResponse.json({ ok: true });
+
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[api/pulso/save] catch global:", message);
+    return NextResponse.json({ error: message, code: "UNEXPECTED" }, { status: 500 });
+  }
 }

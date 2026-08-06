@@ -210,7 +210,11 @@ export default function CapturaPage() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         console.error("[captura] api error:", err);
-        setError("No pudimos guardar tu pulso. Revisa tu conexión e inténtalo de nuevo.");
+        // Mostrar error real temporalmente para diagnóstico
+        const detail = err?.error ?? err?.code ?? "error desconocido";
+        const hint = err?.hint ? ` | Hint: ${err.hint}` : "";
+        const code = err?.code ? ` [${err.code}]` : "";
+        setError(`Error al guardar${code}: ${detail}${hint}`);
         setProcessing(false);
         return;
       }
