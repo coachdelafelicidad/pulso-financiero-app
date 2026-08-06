@@ -184,24 +184,61 @@ export default function CapturaPage() {
 
       const score = calcularScoreSemanal(parsed, historialEgresos);
 
-      const base = {
+      const payload = {
         user_id: user.id,
         periodo_semana: periodoSemana,
+        ventas: parsed.ventas,
+        saldo_bancos_efectivo: parsed.saldo_bancos_efectivo,
+        egresos_semana: parsed.egresos_semana,
+        cobranza_pendiente: parsed.cobranza_pendiente,
+        runway_meses: score.runway_meses,
+        caja_proyectada: score.caja_proyectada,
+        score_liquidez: score.score_liquidez,
+        score_rentabilidad: score.score_rentabilidad,
+        score_planeacion: score.score_planeacion,
         score_general: score.score_general,
+        margen_real: score.margen_real,
       };
 
-      console.log("[captura] upsert payload:", base);
+      console.log("[captura] payload:", payload);
 
-      const { error: upsertError } = await supabase
+      // Buscar si ya existe un registro para esta semana
+      const { data: existing, error: selectError } = await supabase
         .from("pulso_scores")
-        .upsert(base, { onConflict: "user_id,periodo_semana" });
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("periodo_semana", periodoSemana)
+        .maybeSingle();
 
-      if (upsertError) {
-        console.error("[captura] upsertError:", {
-          message: upsertError.message,
-          details: upsertError.details,
-          hint: upsertError.hint,
-          code: upsertError.code,
+      if (selectError) {
+        console.error("[captura] selectError:", selectError);
+        setError("No pudimos verificar tu registro semanal. Inténtalo de nuevo.");
+        setProcessing(false);
+        return;
+      }
+
+      let saveError;
+      if (existing?.id) {
+        // UPDATE — registro de esta semana ya existe
+        const { error } = await supabase
+          .from("pulso_scores")
+          .update(payload)
+          .eq("id", existing.id);
+        saveError = error;
+      } else {
+        // INSERT — primera captura de la semana
+        const { error } = await supabase
+          .from("pulso_scores")
+          .insert(payload);
+        saveError = error;
+      }
+
+      if (saveError) {
+        console.error("[captura] saveError:", {
+          message: saveError.message,
+          details: saveError.details,
+          hint: saveError.hint,
+          code: saveError.code,
         });
         setError("No pudimos guardar tu pulso. Revisa tu conexión e inténtalo de nuevo.");
         setProcessing(false);

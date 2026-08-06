@@ -102,9 +102,10 @@ export default function QuizPage() {
 
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
+      const semana = getWeekStartISO()
       const payload = {
         user_id: user.id,
-        periodo_semana: getWeekStartISO(),
+        periodo_semana: semana,
         ventas,
         saldo_bancos_efectivo,
         egresos_semana,
@@ -117,17 +118,28 @@ export default function QuizPage() {
         score_general: scores.score_general,
         margen_real: scores.margen_real,
       }
-      console.log('[quiz] upsert payload:', payload)
-      const { error: upsertError } = await supabase
+      console.log('[quiz] payload:', payload)
+
+      const { data: existing, error: selectError } = await supabase
         .from('pulso_scores')
-        .upsert(payload, { onConflict: 'user_id,periodo_semana' })
-      if (upsertError) {
-        console.error('[quiz] upsertError:', {
-          message: upsertError.message,
-          details: upsertError.details,
-          hint: upsertError.hint,
-          code: upsertError.code,
-        })
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('periodo_semana', semana)
+        .maybeSingle()
+
+      if (selectError) {
+        console.error('[quiz] selectError:', selectError)
+      } else if (existing?.id) {
+        const { error } = await supabase
+          .from('pulso_scores')
+          .update(payload)
+          .eq('id', existing.id)
+        if (error) console.error('[quiz] updateError:', { message: error.message, details: error.details, hint: error.hint, code: error.code })
+      } else {
+        const { error } = await supabase
+          .from('pulso_scores')
+          .insert(payload)
+        if (error) console.error('[quiz] insertError:', { message: error.message, details: error.details, hint: error.hint, code: error.code })
       }
     }
 
