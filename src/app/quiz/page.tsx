@@ -105,6 +105,7 @@ export default function QuizPage() {
       const payload = {
         user_id: user.id,
         periodo_semana: getWeekStartISO(),
+        ventas,
         saldo_bancos_efectivo,
         egresos_semana,
         cobranza_pendiente,

@@ -187,6 +187,7 @@ export default function CapturaPage() {
       const base = {
         user_id: user.id,
         periodo_semana: periodoSemana,
+        ventas: parsed.ventas,
         saldo_bancos_efectivo: parsed.saldo_bancos_efectivo,
         egresos_semana: parsed.egresos_semana,
         cobranza_pendiente: parsed.cobranza_pendiente,
