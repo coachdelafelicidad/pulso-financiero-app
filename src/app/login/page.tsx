@@ -6,10 +6,13 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { BiometricLoginButton, useBiometricLoginAvailability } from '@/components/auth/BiometricLoginButton'
 import { BIOMETRIC_EMAIL_KEY } from '@/lib/auth/session-config'
+import { useLanguage } from '@/lib/i18n/LanguageContext'
+import { LanguageToggle } from '@/components/ui/LanguageToggle'
 
 const SITE_URL = 'https://app.okomosfinanzas.com'
 
 export default function LoginPage() {
+  const { t } = useLanguage()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -65,7 +68,7 @@ export default function LoginPage() {
           password,
         })
         if (signInError) {
-          setError('Cuenta creada, pero no pudimos iniciar sesión automáticamente. Intenta entrar con tu correo y contraseña.')
+          setError(t('login.error_register'))
           setLoading(false)
           return
         }
@@ -89,7 +92,7 @@ export default function LoginPage() {
       password,
     })
     if (signInError) {
-      setError('Correo o contraseña incorrectos.')
+      setError(t('login.error_credentials'))
     } else {
       await finishLogin()
     }
@@ -98,18 +101,21 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen bg-cream flex items-center justify-center px-4">
+      {/* Language toggle — fixed top-right */}
+      <div className="fixed top-4 right-4 z-10">
+        <LanguageToggle />
+      </div>
+
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block">
             <img src="/logo.png" alt="Okomos Finanzas" className="h-12 w-auto mb-6 mx-auto" />
           </Link>
           <h1 className="font-display text-2xl font-bold text-teal-deep">
-            {mode === 'login' ? 'Bienvenido de regreso' : 'Crea tu cuenta'}
+            {mode === 'login' ? t('login.welcome_back') : t('login.create_account')}
           </h1>
           <p className="text-sm text-teal mt-1">
-            {mode === 'login'
-              ? 'Ingresa para ver tu Score actualizado.'
-              : 'Empieza a medir la salud de tu empresa.'}
+            {mode === 'login' ? t('login.subtitle_login') : t('login.subtitle_register')}
           </p>
         </div>
 
@@ -125,7 +131,7 @@ export default function LoginPage() {
                     : 'text-teal hover:text-teal-deep'
                 }`}
               >
-                {m === 'login' ? 'Iniciar sesión' : 'Registrarse'}
+                {m === 'login' ? t('login.tab_login') : t('login.tab_register')}
               </button>
             ))}
           </div>
@@ -134,7 +140,7 @@ export default function LoginPage() {
             {mode === 'register' && (
               <div>
                 <label htmlFor="business-name" className="block text-sm font-medium text-teal-deep mb-1.5">
-                  Nombre de tu empresa <span className="text-teal/40">(opcional)</span>
+                  {t('login.business_name')} <span className="text-teal/40">{t('login.optional')}</span>
                 </label>
                 <input
                   id="business-name"
@@ -143,7 +149,7 @@ export default function LoginPage() {
                   autoComplete="organization"
                   value={businessName}
                   onChange={(e) => setBusinessName(e.target.value)}
-                  placeholder="Distribuidora García S.A."
+                  placeholder={t('login.business_placeholder')}
                   className="w-full px-4 py-2.5 rounded-lg border border-mint/50 bg-cream/50
                              text-teal-deep placeholder:text-teal/30 focus:outline-none
                              focus:border-teal focus:ring-1 focus:ring-teal/30 transition-colors"
@@ -153,7 +159,7 @@ export default function LoginPage() {
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-teal-deep mb-1.5">
-                Correo electrónico
+                {t('login.email')}
               </label>
               <input
                 id="email"
@@ -162,7 +168,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="tu@empresa.com"
+                placeholder={t('login.email_placeholder')}
                 className="w-full px-4 py-2.5 rounded-lg border border-mint/50 bg-cream/50
                            text-teal-deep placeholder:text-teal/30 focus:outline-none
                            focus:border-teal focus:ring-1 focus:ring-teal/30 transition-colors"
@@ -172,14 +178,14 @@ export default function LoginPage() {
             <div>
               <div className="flex items-baseline justify-between mb-1.5">
                 <label htmlFor="password" className="block text-sm font-medium text-teal-deep">
-                  Contraseña
+                  {t('login.password')}
                 </label>
                 {mode === 'login' && (
                   <Link
                     href="/forgot-password"
                     className="text-xs font-medium text-teal/70 transition-colors hover:text-teal-deep"
                   >
-                    ¿Olvidaste tu contraseña?
+                    {t('login.forgot_password')}
                   </Link>
                 )}
               </div>
@@ -191,7 +197,7 @@ export default function LoginPage() {
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder={t('login.password_placeholder')}
                   className="w-full px-4 py-2.5 pr-11 rounded-lg border border-mint/50 bg-cream/50
                              text-teal-deep placeholder:text-teal/30 focus:outline-none
                              focus:border-teal focus:ring-1 focus:ring-teal/30 transition-colors"
@@ -199,7 +205,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-label={showPassword ? t('login.hide_password') : t('login.show_password')}
                   aria-pressed={showPassword}
                   className="absolute inset-y-0 right-0 flex items-center px-3 text-teal/50 transition-colors hover:text-teal-deep focus:outline-none"
                 >
@@ -227,7 +233,7 @@ export default function LoginPage() {
                   className="h-4 w-4 rounded border-mint/60 text-teal-deep focus:ring-teal/30"
                 />
                 <span className="text-sm text-teal-deep/80">
-                  Recordarme en este dispositivo (30 días)
+                  {t('login.remember_me')}
                 </span>
               </label>
             )}
@@ -250,10 +256,10 @@ export default function LoginPage() {
               className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading
-                ? 'Un momento...'
+                ? t('login.loading')
                 : mode === 'login'
-                ? 'Entrar'
-                : 'Crear cuenta'}
+                ? t('login.btn_login')
+                : t('login.btn_register')}
             </button>
 
             {mode === 'login' && showBiometric && (
@@ -263,7 +269,7 @@ export default function LoginPage() {
                     <div className="w-full border-t border-mint/40" />
                   </div>
                   <div className="relative flex justify-center">
-                    <span className="bg-white px-3 text-xs text-teal/60">o acceso rápido</span>
+                    <span className="bg-white px-3 text-xs text-teal/60">{t('login.quick_access')}</span>
                   </div>
                 </div>
                 <BiometricLoginButton
@@ -280,8 +286,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-teal/50 mt-6">
-          Al registrarte aceptas el uso de tus datos solo para generar tu Score.
-          No compartimos información con terceros.
+          {t('login.privacy')}
         </p>
       </div>
     </main>

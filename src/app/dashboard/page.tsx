@@ -25,6 +25,8 @@ import { PasskeyManager } from "@/components/auth/PasskeyManager";
 import { InstallAppModal } from "@/components/dashboard/InstallAppModal";
 import { BIOMETRIC_PREF_KEY } from "@/lib/auth/session-config";
 import { isPlatformAuthenticatorAvailable } from "@/lib/auth/webauthn-client";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import type { PulsoScore } from "@/types/database";
 
 const TEAL = "#06403C";
@@ -97,9 +99,9 @@ const BASE_TREND = [
 const TREND_LAST = BASE_TREND[BASE_TREND.length - 1];
 
 function semaforoScore(score: number) {
-  if (score >= 70) return { color: LIME, halo: "rgba(125,194,66,0.22)", label: "Salud sana" };
-  if (score >= 40) return { color: AMBER, halo: "rgba(232,163,61,0.22)", label: "En observación" };
-  return { color: RED, halo: "rgba(212,93,93,0.22)", label: "Necesita atención" };
+  if (score >= 70) return { color: LIME, halo: "rgba(125,194,66,0.22)", labelKey: "score.healthy" };
+  if (score >= 40) return { color: AMBER, halo: "rgba(232,163,61,0.22)", labelKey: "score.warning" };
+  return { color: RED, halo: "rgba(212,93,93,0.22)", labelKey: "score.danger" };
 }
 
 const STATUS_DOT: Record<string, string> = { good: LIME, warn: AMBER, bad: RED };
@@ -160,23 +162,27 @@ function deltaPrefix(pct: number | null): string {
   return pct > 0 ? "↑ " : "↓ ";
 }
 
-function buildKpis(current: PulsoData, previous: PulsoData | null): KpiDelta[] {
-  const defs: { key: KpiKey; label: string; hint: string; status: "good" | "warn" }[] = [
-    { key: "ventas", label: "Ventas de la semana", hint: "Facturado en los últimos 7 días", status: "good" },
-    { key: "egresos_semana", label: "Egresos de la semana", hint: "Costo total de operar esta semana", status: "warn" },
-    { key: "saldo_bancos_efectivo", label: "Efectivo disponible", hint: "Saldo real en bancos + caja hoy", status: "good" },
-    { key: "cobranza_pendiente", label: "Cobranza pendiente activa", hint: "Lo que te deben tus clientes", status: "warn" },
+function buildKpis(
+  current: PulsoData,
+  previous: PulsoData | null,
+  t: (k: string) => string
+): KpiDelta[] {
+  const defs: { key: KpiKey; labelKey: string; hintKey: string; status: "good" | "warn" }[] = [
+    { key: "ventas",                labelKey: "kpi.sales",       hintKey: "kpi.hint_sales",       status: "good" },
+    { key: "egresos_semana",        labelKey: "kpi.expenses",    hintKey: "kpi.hint_expenses",    status: "warn" },
+    { key: "saldo_bancos_efectivo", labelKey: "kpi.cash",        hintKey: "kpi.hint_cash",        status: "good" },
+    { key: "cobranza_pendiente",    labelKey: "kpi.receivables", hintKey: "kpi.hint_receivables", status: "warn" },
   ];
 
-  return defs.map(({ key, label, hint, status }) => {
+  return defs.map(({ key, labelKey, hintKey, status }) => {
     const pct = previous ? pctChange(safeNumber(current[key]), safeNumber(previous[key])) : null;
     return {
-      label,
+      label: t(labelKey),
       value: safeNumber(current[key]),
       delta: `${deltaPrefix(pct)}${formatDelta(pct)}`.trim() || "—",
       deltaColor: deltaColor(key, pct),
       status,
-      hint,
+      hint: t(hintKey),
     };
   });
 }
@@ -184,6 +190,7 @@ function buildKpis(current: PulsoData, previous: PulsoData | null): KpiDelta[] {
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useLanguage();
   const [ventasDrop, setVentasDrop] = useState(0);
   const [cobranzaDelay, setCobranzaDelay] = useState(0);
   const [data, setData] = useState<PulsoData>(EMPTY_DATA);
@@ -461,7 +468,7 @@ function DashboardContent() {
 
   const kpis = useMemo(() => {
     if (!hasData || scoreHistory.length === 0) {
-      return buildKpis(safeData, null);
+      return buildKpis(safeData, null, t);
     }
 
     const byMonth = latestSnapshotPerMonth(scoreHistory);
@@ -469,11 +476,12 @@ function DashboardContent() {
     const previous = byMonth.get(prevKey);
 
     if (!previous) {
-      return buildKpis(safeData, null);
+      return buildKpis(safeData, null, t);
     }
 
-    return buildKpis(safeData, normalizeData(previous));
-  }, [safeData, hasData, scoreHistory]);
+    return buildKpis(safeData, normalizeData(previous), t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeData, hasData, scoreHistory, t]);
 
   const trend = useMemo(() => {
     const efFactor =
@@ -524,17 +532,17 @@ function DashboardContent() {
     const gastoMensual = safeData.egresos_semana * 4.33;
     const coverage = gastoMensual > 0 ? projected / gastoMensual : 0;
 
-    let color = LIME, halo = "rgba(125,194,66,0.22)", label = "Caja saludable";
-    if (projected < gastoMensual) { color = RED; halo = "rgba(212,93,93,0.22)"; label = "Caja en riesgo"; }
-    else if (projected < gastoMensual * 2) { color = AMBER; halo = "rgba(232,163,61,0.22)"; label = "Margen ajustado"; }
+    let color = LIME, halo = "rgba(125,194,66,0.22)", labelKey = "sim.healthy";
+    if (projected < gastoMensual) { color = RED; halo = "rgba(212,93,93,0.22)"; labelKey = "sim.risk"; }
+    else if (projected < gastoMensual * 2) { color = AMBER; halo = "rgba(232,163,61,0.22)"; labelKey = "sim.tight"; }
 
-    return { projected, delta, coverage, color, halo, label };
+    return { projected, delta, coverage, color, halo, labelKey };
   }, [cobranzaDelay, ventasDrop, safeData]);
 
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F7F5F0] font-poppins text-[#06403C]">
-        Cargando tablero…
+        {t('dash.loading')}
       </div>
     );
   }
@@ -542,7 +550,7 @@ function DashboardContent() {
   if (!isAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F7F5F0] font-poppins text-[#06403C]">
-        Redirigiendo al login…
+        {t('dash.redirecting')}
       </div>
     );
   }
@@ -551,34 +559,35 @@ function DashboardContent() {
     <div className="min-h-screen bg-[#F7F5F0] font-sans text-[#1B2624]">
       <header className="no-print sticky top-0 z-10 flex items-center justify-between gap-5 border-b border-black/[0.08] bg-[#F7F5F0] px-6 py-4 md:px-10">
         <Image src="/logo.png" alt="Okomos Finanzas" width={140} height={32} className="h-8 w-auto" priority />
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <LanguageToggle />
           <button
             onClick={() => setShowHelp(true)}
             className="inline-flex items-center gap-2 rounded-full border border-black/[0.12] px-3.5 py-2 text-[13px] font-medium text-black/60 transition hover:border-[#06403C]/40 hover:text-[#06403C]"
           >
             <span className="flex h-4 w-4 items-center justify-center rounded-full border border-current text-[10px] font-semibold">?</span>
-            <span className="hidden sm:inline">¿Cómo usar este tablero?</span>
+            <span className="hidden sm:inline">{t('dash.how_to')}</span>
           </button>
           <button
             type="button"
             onClick={() => setShowInstallApp(true)}
             className="inline-flex items-center gap-2 rounded-full border border-[#06403C] px-3.5 py-2 font-poppins text-[13px] font-medium text-[#06403C] transition hover:border-[#9AD9CF] hover:bg-[#06403C]/[0.05]"
           >
-            <span className="hidden sm:inline">Instalar en mi Celular</span>
-            <span className="sm:hidden">Instalar</span>
+            <span className="hidden sm:inline">{t('dash.install')}</span>
+            <span className="sm:hidden">{t('dash.install_short')}</span>
             <span aria-hidden="true">📱</span>
           </button>
           <button
             type="button"
             onClick={() => setShowPasskeyManager(true)}
-            title="Gestionar Face ID / Touch ID"
+            title={t('dash.face_id')}
             className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.12] px-3.5 py-2 text-[13px] font-medium text-black/60 transition hover:border-[#06403C]/40 hover:text-[#06403C]"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
               <path d="M12 11c1.66 0 3-1.34 3-3S13.66 5 12 5 9 6.34 9 8s1.34 3 3 3z"/>
               <path d="M4 12c1.2-3.2 4.2-5 8-5s6.8 1.8 8 5"/>
             </svg>
-            <span className="hidden sm:inline">Face ID</span>
+            <span className="hidden sm:inline">{t('dash.face_id')}</span>
           </button>
           <span className="h-7 w-px bg-black/10" />
           <div className="text-right leading-tight">
@@ -590,7 +599,7 @@ function DashboardContent() {
             onClick={handleLogout}
             className="rounded-full px-4 py-2 text-[13px] font-medium text-black/60 transition hover:bg-black/[0.05] hover:text-[#06403C]"
           >
-            Cerrar sesión
+            {t('dash.logout')}
           </button>
         </div>
       </header>
@@ -620,7 +629,7 @@ function DashboardContent() {
 
         {isRefreshing && (
           <div className="no-print rounded-[16px] border border-[#06403C]/15 bg-white px-5 py-4 text-[14px] text-[#06403C]">
-            Sincronizando tu suscripción y actualizando datos desde Supabase…
+            {t('dash.syncing')}
           </div>
         )}
 
@@ -628,15 +637,15 @@ function DashboardContent() {
           <div className="no-print flex items-start justify-between gap-4 rounded-[16px] border border-[#7DC242]/30 bg-[#7DC242]/10 px-5 py-4">
             <div>
               <div className="mb-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#5a9a2f]">
-                Suscripción activa
+                {t('dash.premium_badge')}
               </div>
               <p className="font-poppins text-[15px] font-medium text-[#06403C]">
-                ¡Bienvenido a Tu Pulso Premium! Tu pago fue procesado correctamente.
+                {t('dash.premium_body')}
               </p>
             </div>
             <button
               onClick={() => setShowPremiumWelcome(false)}
-              aria-label="Cerrar"
+              aria-label={t('common.close')}
               className="shrink-0 text-[18px] leading-none text-black/40 transition hover:text-[#06403C]"
             >
               ✕
@@ -663,24 +672,24 @@ function DashboardContent() {
 
         {!hasData && (
           <div className="no-print rounded-[16px] border border-[#06403C]/15 bg-white px-5 py-4 text-[14px] text-[#06403C]">
-            Aún no tienes un pulso registrado. Usa <strong>Registrar Pulso Semanal</strong> para activar tu score y métricas.
+            {t('dash.no_data')} <strong>{t('dash.no_data_cta')}</strong> {t('dash.no_data_suffix')}
           </div>
         )}
 
         <section className="report-section flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="mb-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7DC242]">
-              Tu Pulso · esta semana
+              {t('dash.pulse_badge')}
             </div>
             <h1 className="font-poppins text-[26px] font-semibold -tracking-[0.02em] text-[#06403C]">
-              Tu Pulso esta semana
+              {t('dash.pulse_title')}
             </h1>
           </div>
           <Link
             href="/dashboard/captura"
             className="no-print mb-4 inline-flex w-fit items-center justify-center gap-2 rounded-full bg-[#7DC242] px-5 py-3 font-poppins text-[14px] font-medium text-white shadow-[0_14px_30px_-16px_rgba(125,194,66,0.9)] transition hover:brightness-95 active:scale-[0.98] sm:mb-0"
           >
-            Registrar Pulso Semanal
+            {t('dash.register_cta')}
           </Link>
         </section>
 
@@ -688,10 +697,10 @@ function DashboardContent() {
           <div className="flex flex-col justify-between rounded-[20px] border border-black/[0.12] bg-[#F7F5F0] p-8">
             <div className="mb-1.5 flex items-center gap-2.5">
               <span className="h-2.5 w-2.5 rounded-full" style={{ background: sc.color, boxShadow: `0 0 0 4px ${sc.halo}` }} />
-              <span className="text-[13.5px] font-medium" style={{ color: sc.color }}>{sc.label}</span>
+              <span className="text-[13.5px] font-medium" style={{ color: sc.color }}>{t(sc.labelKey)}</span>
             </div>
             <div>
-              <div className="mb-1 text-[13px] text-black/55">Score de salud financiera</div>
+              <div className="mb-1 text-[13px] text-black/55">{t('dash.score_label')}</div>
               <div className="flex items-baseline gap-1.5">
                 <span className="font-poppins text-[72px] font-bold leading-[0.9] -tracking-[0.03em] text-[#06403C]">{score}</span>
                 <span className="font-poppins text-[22px] font-medium text-black/35">/100</span>
@@ -703,19 +712,19 @@ function DashboardContent() {
             <div className="relative flex flex-col justify-center gap-4 overflow-hidden rounded-[20px] bg-[#06403C] p-8">
               <div className="absolute -right-10 -top-10 h-[150px] w-[150px] rounded-full bg-[#9AD9CF]/[0.14]" />
               <div className="relative">
-                <div className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9AD9CF]">Alerta temprana</div>
+                <div className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9AD9CF]">{t('alert.badge')}</div>
                 <p className="mb-1 max-w-[340px] font-poppins text-[19px] font-medium leading-snug -tracking-[0.01em] text-[#F7F5F0]">
-                  Tu score indica fricción oculta en tu flujo.
+                  {t('alert.title')}
                 </p>
                 <p className="max-w-[340px] text-[14px] leading-relaxed text-[#F7F5F0]/70">
-                  Una sesión con un CFO ordena tus prioridades antes de que la caja apriete.
+                  {t('alert.body')}
                 </p>
               </div>
               <Link
                 href="https://okomosfinanzas.com/diagnostico.html"
                 className="no-print relative mt-1 inline-flex w-fit items-center justify-center rounded-full bg-[#7DC242] px-6 py-3 font-poppins text-[15px] font-medium text-white transition hover:brightness-95 active:scale-[0.98]"
               >
-                Agendar mi sesión de diagnóstico
+                {t('alert.cta')}
               </Link>
             </div>
           )}
@@ -731,7 +740,7 @@ function DashboardContent() {
                   style={{ background: `${STATUS_DOT[k.status]}22`, color: k.status === "good" ? "#5a9a2f" : AMBER }}
                 >
                   <span className="h-1.5 w-1.5 rounded-full" style={{ background: STATUS_DOT[k.status] }} />
-                  {k.status === "good" ? "Bien" : "Atención"}
+                  {k.status === "good" ? t('kpi.good') : t('kpi.attention')}
                 </span>
               </div>
               <div className="flex items-baseline gap-2">
@@ -746,9 +755,9 @@ function DashboardContent() {
         <section className="report-section print-chart rounded-[20px] border border-black/[0.08] bg-white p-7 shadow-[0_18px_40px_-28px_rgba(6,64,60,0.4)]">
           <div className="mb-3.5">
             <h2 className="mb-1 font-poppins text-[18px] font-semibold -tracking-[0.01em] text-[#06403C]">
-              Efectivo vs. gastos operativos
+              {t('chart.title')}
             </h2>
-            <p className="text-[13.5px] text-black/55">¿Se está quedando el negocio sin gasolina? Últimas 8 semanas.</p>
+            <p className="text-[13.5px] text-black/55">{t('chart.subtitle')}</p>
           </div>
           <div className="print-chart-container min-h-[300px]">
             {hasData ? (
@@ -769,37 +778,37 @@ function DashboardContent() {
               />
               <Legend iconType="plainline" align="right" verticalAlign="top" height={34}
                 wrapperStyle={{ fontSize: 12.5, color: "rgba(27,38,36,0.6)" }} />
-              <Line type="monotone" dataKey="saldo_bancos_efectivo" name="Efectivo disponible" stroke={MINT} strokeWidth={2.75} dot={false} activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }} />
-              <Line type="monotone" dataKey="egresos_semana" name="Egresos de la semana" stroke={TEAL} strokeWidth={2} strokeDasharray="5 4" dot={false} activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }} />
+              <Line type="monotone" dataKey="saldo_bancos_efectivo" name={t('chart.cash_line')} stroke={MINT} strokeWidth={2.75} dot={false} activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }} />
+              <Line type="monotone" dataKey="egresos_semana" name={t('chart.expense_line')} stroke={TEAL} strokeWidth={2} strokeDasharray="5 4" dot={false} activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }} />
             </LineChart>
           </ResponsiveContainer>
             ) : (
               <div className="flex h-[300px] items-center justify-center rounded-xl border border-dashed border-black/[0.1] bg-[#F7F5F0]/60 text-[14px] text-black/50">
-                Registra tu primer pulso para ver la tendencia semanal.
+                {t('chart.empty')}
               </div>
             )}
           </div>
         </section>
 
         <section id="simulador-estres" className="report-section stress-report rounded-[20px] border border-black/[0.12] bg-[#F7F5F0] p-8">
-          <div className="no-print mb-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7DC242]">Alta dirección</div>
+          <div className="no-print mb-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7DC242]">{t('sim.badge')}</div>
           <h2 className="mb-1 font-poppins text-[20px] font-semibold -tracking-[0.01em] text-[#06403C]">
-            Simulador de estrés de Tesorería
+            {t('sim.title')}
           </h2>
           <p className="no-print mb-6 max-w-[520px] text-[14px] leading-relaxed text-black/55">
-            Proyecta escenarios críticos sin tocar tus datos reales. Mueve las variables y observa el impacto inmediato en tu caja proyectada de fin de mes.
+            {t('sim.subtitle')}
           </p>
 
           <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-2">
             <div className="flex flex-col gap-7">
               <SimSlider
-                label="¿Y si mis ventas caen…? (impacto en rentabilidad)"
-                value={ventasDrop === 0 ? "Sin cambio" : `−${ventasDrop}%`}
+                label={t('sim.slider_sales')}
+                value={ventasDrop === 0 ? t('sim.no_change') : `−${ventasDrop}%`}
                 min={0} max={50} step={5} current={ventasDrop} onChange={setVentasDrop}
               />
               <SimSlider
-                label="¿Y si la cobranza se retrasa…?"
-                value={`${cobranzaDelay} días`}
+                label={t('sim.slider_collection')}
+                value={`${cobranzaDelay} ${t('sim.days')}`}
                 min={0} max={60} step={5} current={cobranzaDelay} onChange={setCobranzaDelay}
               />
               <div className="no-print flex flex-wrap items-center gap-3">
@@ -807,7 +816,7 @@ function DashboardContent() {
                   onClick={() => { setVentasDrop(0); setCobranzaDelay(0); }}
                   className="w-fit rounded-full border border-black/[0.18] px-[18px] py-2 text-[13px] font-medium text-black/60 transition hover:border-[#06403C]/40 hover:text-[#06403C]"
                 >
-                  Restablecer escenario
+                  {t('sim.reset')}
                 </button>
                 <button
                   type="button"
@@ -823,7 +832,7 @@ function DashboardContent() {
                       strokeLinejoin="round"
                     />
                   </svg>
-                  Exportar Reporte PDF
+                  {t('sim.export')}
                 </button>
               </div>
             </div>
@@ -831,20 +840,20 @@ function DashboardContent() {
             <div className="stress-report-results rounded-2xl border border-black/[0.08] bg-white p-7 shadow-[0_14px_34px_-24px_rgba(6,64,60,0.5)]">
               <div className="mb-3 flex items-center gap-2.5">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ background: sim.color, boxShadow: `0 0 0 4px ${sim.halo}` }} />
-                <span className="text-[13px] font-medium" style={{ color: sim.color }}>{sim.label}</span>
+                <span className="text-[13px] font-medium" style={{ color: sim.color }}>{t(sim.labelKey)}</span>
               </div>
-              <div className="mb-1 text-[13px] text-black/55">Caja proyectada a fin de mes</div>
+              <div className="mb-1 text-[13px] text-black/55">{t('sim.cash_label')}</div>
               <div className="font-poppins text-[44px] font-bold leading-none -tracking-[0.02em] text-[#06403C]">
                 {mxn(sim.projected)}
               </div>
               <div className="mt-2 text-[13.5px] font-medium" style={{ color: sim.delta < 0 ? RED : "rgba(27,38,36,0.5)" }}>
-                {sim.delta >= 0 ? "+" : "−"}{mxn(Math.abs(sim.delta))} vs. escenario base
+                {sim.delta >= 0 ? "+" : "−"}{mxn(Math.abs(sim.delta))} {t('sim.vs_base')}
               </div>
               <div className="my-5 h-px bg-black/[0.08]" />
               <div className="flex items-baseline justify-between">
-                <span className="text-[13.5px] text-black/55">Meses de cobertura de gastos</span>
+                <span className="text-[13.5px] text-black/55">{t('sim.coverage')}</span>
                 <span className="font-poppins text-[18px] font-semibold" style={{ color: sim.color }}>
-                  {sim.coverage.toFixed(1)} meses
+                  {sim.coverage.toFixed(1)} {t('sim.months')}
                 </span>
               </div>
             </div>
@@ -863,7 +872,7 @@ export default function DashboardPage() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center bg-[#F7F5F0] font-poppins text-[#06403C]">
-          Cargando tablero…
+          Cargando…
         </div>
       }
     >
@@ -873,23 +882,12 @@ export default function DashboardPage() {
 }
 
 function HelpModal({ score, onClose }: { score: number; onClose: () => void }) {
+  const { t } = useLanguage();
   const steps = [
-    {
-      title: "Paso 1 · Diagnóstico inicial",
-      body: `Tu Score de Salud (${score}/100) te dice el estado real de tu PyME hoy. Si está por debajo de 70, hay fricción en tu flujo.`,
-    },
-    {
-      title: "Paso 2 · Entiende tus KPIs",
-      body: 'Revisa las tarjetas. "Bien" significa que tienes liquidez; "Atención" significa que el dinero está atorado en clientes o que te queda poca gasolina (meses de cobertura) para operar.',
-    },
-    {
-      title: "Paso 3 · Simula escenarios",
-      body: 'Ve al final de la página, arrastra los sliders del "Simulador de Estrés de Tesorería" y proyecta en tiempo real qué pasaría con tu dinero si caen tus ventas o se retrasa tu cobranza.',
-    },
-    {
-      title: "Paso 4 · Toma acción",
-      body: 'Si tu negocio está en riesgo, usa el botón "Agendar mi sesión de diagnóstico" para armar una estrategia con un CFO.',
-    },
+    { title: t('help.step1_title'), body: t('help.step1_body', { score }) },
+    { title: t('help.step2_title'), body: t('help.step2_body') },
+    { title: t('help.step3_title'), body: t('help.step3_body') },
+    { title: t('help.step4_title'), body: t('help.step4_body') },
   ];
 
   return (
@@ -907,15 +905,15 @@ function HelpModal({ score, onClose }: { score: number; onClose: () => void }) {
         <div className="flex items-start justify-between gap-4 border-b border-black/[0.08] px-8 pb-5 pt-7">
           <div>
             <div className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7DC242]">
-              Guía rápida
+              {t('help.badge')}
             </div>
             <h2 id="help-title" className="font-poppins text-[22px] font-semibold -tracking-[0.02em] text-[#06403C]">
-              ¿Cómo usar este tablero?
+              {t('help.title')}
             </h2>
           </div>
           <button
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={t('common.close')}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/[0.12] text-[16px] leading-none text-black/50 transition hover:border-[#06403C]/40 hover:text-[#06403C]"
           >
             ✕
@@ -943,7 +941,7 @@ function HelpModal({ score, onClose }: { score: number; onClose: () => void }) {
             onClick={onClose}
             className="w-full rounded-full bg-[#7DC242] px-6 py-3 font-poppins text-[15px] font-medium text-white transition hover:brightness-95 active:scale-[0.99]"
           >
-            Cerrar
+            {t('common.close')}
           </button>
         </div>
       </div>

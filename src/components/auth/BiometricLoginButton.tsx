@@ -8,6 +8,7 @@ import {
   isPlatformAuthenticatorAvailable,
 } from "@/lib/auth/webauthn-client";
 import { BIOMETRIC_EMAIL_KEY } from "@/lib/auth/session-config";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type Props = {
   email: string;
@@ -49,11 +50,12 @@ function BiometricIcon() {
 export function BiometricLoginButton({ email, onSuccess, onError }: Props) {
   const [loading, setLoading] = useState(false);
   const label = getBiometricLabel();
+  const { t } = useLanguage();
 
   async function handleBiometricLogin() {
     const normalized = email.trim().toLowerCase();
     if (!normalized) {
-      onError("Ingresa tu correo para usar acceso biométrico.");
+      onError(t('bio.error_start'));
       return;
     }
 
@@ -61,7 +63,7 @@ export function BiometricLoginButton({ email, onSuccess, onError }: Props) {
     try {
       const available = await isPlatformAuthenticatorAvailable();
       if (!available) {
-        onError("Este dispositivo no soporta Face ID, Touch ID o huella digital.");
+        onError(t('bio.no_support'));
         return;
       }
 
@@ -70,7 +72,7 @@ export function BiometricLoginButton({ email, onSuccess, onError }: Props) {
       );
       const status = await statusRes.json();
       if (!status.hasPasskey) {
-        onError("Aún no has activado el acceso biométrico. Entra con tu contraseña primero.");
+        onError(t('bio.not_registered'));
         return;
       }
 
@@ -81,7 +83,7 @@ export function BiometricLoginButton({ email, onSuccess, onError }: Props) {
       });
       const optionsPayload = await optionsRes.json();
       if (!optionsRes.ok) {
-        onError(optionsPayload.error || "No se pudo iniciar acceso biométrico.");
+        onError(optionsPayload.error || t('bio.error_start'));
         return;
       }
 
@@ -94,7 +96,7 @@ export function BiometricLoginButton({ email, onSuccess, onError }: Props) {
       });
       const verifyPayload = await verifyRes.json();
       if (!verifyRes.ok) {
-        onError(verifyPayload.error || "Verificación biométrica fallida.");
+        onError(verifyPayload.error || t('bio.error_verify'));
         return;
       }
 
@@ -105,7 +107,7 @@ export function BiometricLoginButton({ email, onSuccess, onError }: Props) {
       });
 
       if (error) {
-        onError("No se pudo establecer la sesión. Usa tu contraseña.");
+        onError(t('bio.error_session'));
         return;
       }
 
@@ -113,7 +115,7 @@ export function BiometricLoginButton({ email, onSuccess, onError }: Props) {
       await syncSessionToCookies();
       onSuccess();
     } catch {
-      onError("Acceso biométrico cancelado o no disponible.");
+      onError(t('bio.cancelled'));
     } finally {
       setLoading(false);
     }
@@ -127,7 +129,7 @@ export function BiometricLoginButton({ email, onSuccess, onError }: Props) {
       className="inline-flex w-full items-center justify-center gap-2.5 rounded-full border border-[#06403C] bg-white px-5 py-3 font-poppins text-[14px] font-medium text-[#06403C] transition hover:border-[#9AD9CF] hover:bg-[#06403C]/[0.04] disabled:cursor-not-allowed disabled:opacity-50"
     >
       <BiometricIcon />
-      {loading ? "Verificando…" : `Entrar con ${label}`}
+      {loading ? t('bio.verifying') : `${t('bio.login_with')} ${label}`}
     </button>
   );
 }

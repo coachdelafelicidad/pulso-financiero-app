@@ -8,6 +8,7 @@ import {
   isPlatformAuthenticatorAvailable,
 } from "@/lib/auth/webauthn-client";
 import { BIOMETRIC_EMAIL_KEY, BIOMETRIC_PREF_KEY } from "@/lib/auth/session-config";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type Credential = {
   id: string;
@@ -39,6 +40,7 @@ export function PasskeyManager({ email, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const label = getBiometricLabel();
+  const { t } = useLanguage();
 
   const fetchCredentials = useCallback(async () => {
     setLoadingList(true);
@@ -52,11 +54,11 @@ export function PasskeyManager({ email, onClose }: Props) {
       const data = await res.json();
       setCredentials(data.credentials ?? []);
     } catch {
-      setError("No se pudo cargar la lista de dispositivos.");
+      setError(t('pk.err_list'));
     } finally {
       setLoadingList(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void fetchCredentials();
@@ -70,7 +72,7 @@ export function PasskeyManager({ email, onClose }: Props) {
     try {
       const available = await isPlatformAuthenticatorAvailable();
       if (!available) {
-        setError("Este dispositivo no soporta Face ID, Touch ID o huella digital.");
+        setError(t('bio.no_support'));
         return;
       }
 
@@ -87,7 +89,7 @@ export function PasskeyManager({ email, onClose }: Props) {
       });
       const optionsPayload = await optionsRes.json();
       if (!optionsRes.ok) {
-        setError(optionsPayload.error || "No se pudo preparar el registro.");
+        setError(optionsPayload.error || t('pk.err_options'));
         return;
       }
 
@@ -100,16 +102,16 @@ export function PasskeyManager({ email, onClose }: Props) {
       });
       const verifyPayload = await verifyRes.json();
       if (!verifyRes.ok) {
-        setError(verifyPayload.error || "No se pudo registrar la biometría.");
+        setError(verifyPayload.error || t('pk.err_verify'));
         return;
       }
 
       localStorage.setItem(BIOMETRIC_PREF_KEY, "enabled");
       localStorage.setItem(BIOMETRIC_EMAIL_KEY, email.trim().toLowerCase());
-      setSuccess(`${label} activado en este dispositivo.`);
+      setSuccess(`${label} ${t('pk.success')}`);
       await fetchCredentials();
     } catch {
-      setError("Registro cancelado o no disponible en este dispositivo.");
+      setError(t('pk.err_cancelled'));
     } finally {
       setAddingNew(false);
     }
@@ -133,7 +135,7 @@ export function PasskeyManager({ email, onClose }: Props) {
       });
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || "No se pudo eliminar el dispositivo.");
+        setError(data.error || t('pk.err_delete'));
         return;
       }
 
@@ -142,7 +144,7 @@ export function PasskeyManager({ email, onClose }: Props) {
       }
       await fetchCredentials();
     } catch {
-      setError("Error al eliminar el dispositivo.");
+      setError(t('pk.err_delete_net'));
     } finally {
       setDeletingId(null);
     }
@@ -159,16 +161,16 @@ export function PasskeyManager({ email, onClose }: Props) {
         <div className="flex items-center justify-between">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#7DC242]">
-              Seguridad
+              {t('pk.security')}
             </div>
             <h2 className="font-poppins text-[18px] font-semibold text-[#06403C] mt-0.5">
-              Face ID / Biometría
+              {t('pk.title')}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={t('common.close')}
             className="text-[20px] leading-none text-black/35 hover:text-[#06403C] transition"
           >
             ✕
@@ -176,7 +178,7 @@ export function PasskeyManager({ email, onClose }: Props) {
         </div>
 
         <p className="text-[13.5px] leading-relaxed text-black/55">
-          Inicia sesión con {label} en este dispositivo sin necesidad de contraseña. Puedes registrar múltiples dispositivos.
+          {t('pk.body')} {label} {t('pk.body2')}
         </p>
 
         {error && (
@@ -192,13 +194,13 @@ export function PasskeyManager({ email, onClose }: Props) {
 
         <div className="flex flex-col gap-2">
           <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-black/40 mb-1">
-            Dispositivos registrados
+            {t('pk.devices')}
           </div>
           {loadingList ? (
-            <div className="text-[13px] text-black/40 py-2">Cargando…</div>
+            <div className="text-[13px] text-black/40 py-2">{t('pk.loading')}</div>
           ) : credentials.length === 0 ? (
             <div className="rounded-xl border border-dashed border-black/15 px-4 py-4 text-[13.5px] text-black/40 text-center">
-              Ningún dispositivo registrado aún.
+              {t('pk.empty')}
             </div>
           ) : (
             credentials.map((cred) => (
@@ -211,18 +213,18 @@ export function PasskeyManager({ email, onClose }: Props) {
                     {cred.device_name || label}
                   </div>
                   <div className="text-[12px] text-black/45 mt-0.5">
-                    Añadido {fmtDate(cred.created_at)}
-                    {cred.last_used_at && ` · Último uso ${fmtDate(cred.last_used_at)}`}
+                    {t('pk.added')} {fmtDate(cred.created_at)}
+                    {cred.last_used_at && ` · ${t('pk.last_used')} ${fmtDate(cred.last_used_at)}`}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleDelete(cred.id)}
                   disabled={deletingId === cred.id}
-                  aria-label="Eliminar dispositivo"
+                  aria-label={t('pk.delete')}
                   className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium text-[#D45D5D] border border-[#D45D5D]/30 hover:bg-[#D45D5D]/8 transition disabled:opacity-50"
                 >
-                  {deletingId === cred.id ? "…" : "Eliminar"}
+                  {deletingId === cred.id ? "…" : t('pk.delete')}
                 </button>
               </div>
             ))
@@ -235,7 +237,7 @@ export function PasskeyManager({ email, onClose }: Props) {
           disabled={addingNew}
           className="inline-flex items-center justify-center gap-2 rounded-full bg-[#06403C] px-5 py-3 font-poppins text-[14px] font-medium text-white transition hover:brightness-95 disabled:opacity-50"
         >
-          {addingNew ? "Configurando…" : `+ Registrar ${label} en este dispositivo`}
+          {addingNew ? t('bio.configuring') : `${t('pk.add_device')} ${label} ${t('pk.add_device2')}`}
         </button>
       </div>
     </div>

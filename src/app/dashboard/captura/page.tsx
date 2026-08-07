@@ -11,45 +11,19 @@ import {
   getWeekStartISO,
 } from "@/lib/scoring";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { LanguageToggle } from "@/components/ui/LanguageToggle";
 
 type FieldKey = "saldo_bancos_efectivo" | "egresos_semana" | "cobranza_pendiente" | "ventas";
 
-const FIELDS: {
-  key: FieldKey;
-  label: string;
-  hint: string;
-  placeholder: string;
-}[] = [
-  {
-    key: "ventas",
-    label: "Ventas de la Semana",
-    hint: "Monto total facturado o comprometido en los últimos 7 días",
-    placeholder: "0",
-  },
-  {
-    key: "egresos_semana",
-    label: "Egresos de la Semana (Bancos + Efectivo)",
-    hint: "Costos de nómina, luz, rentas, proveedores y operación de la semana",
-    placeholder: "0",
-  },
-  {
-    key: "saldo_bancos_efectivo",
-    label: "Efectivo Disponible (Bancos + Caja)",
-    hint: "El número rey. Saldo real total acumulado en tus cuentas y caja hoy",
-    placeholder: "0",
-  },
-  {
-    key: "cobranza_pendiente",
-    label: "Cobranza Pendiente Activa",
-    hint: "Cuentas por cobrar vigentes que te deben tus clientes actualmente",
-    placeholder: "0",
-  },
-];
+const LIME = "#7DC242";
+const AMBER = "#E8A33D";
+const RED = "#D45D5D";
 
-function semaforo(score: number) {
-  if (score >= 70) return { color: "#7DC242", halo: "rgba(125,194,66,0.22)", label: "Salud sana" };
-  if (score >= 40) return { color: "#E8A33D", halo: "rgba(232,163,61,0.22)", label: "En observación" };
-  return { color: "#D45D5D", halo: "rgba(212,93,93,0.22)", label: "Necesita atención" };
+function semaforoCaptura(score: number) {
+  if (score >= 70) return { color: LIME, halo: "rgba(125,194,66,0.22)", labelKey: "score.healthy" };
+  if (score >= 40) return { color: AMBER, halo: "rgba(232,163,61,0.22)", labelKey: "score.warning" };
+  return { color: RED, halo: "rgba(212,93,93,0.22)", labelKey: "score.danger" };
 }
 
 function safeNum(v: unknown): number {
@@ -67,6 +41,15 @@ function mxn(v: number) {
 
 export default function CapturaPage() {
   const router = useRouter();
+  const { t } = useLanguage();
+
+  const FIELDS: { key: FieldKey; labelKey: string; hintKey: string; placeholder: string }[] = [
+    { key: "ventas",               labelKey: "cap.field.sales",       hintKey: "cap.field.sales_hint",       placeholder: "0" },
+    { key: "egresos_semana",       labelKey: "cap.field.expenses",    hintKey: "cap.field.expenses_hint",    placeholder: "0" },
+    { key: "saldo_bancos_efectivo",labelKey: "cap.field.cash",        hintKey: "cap.field.cash_hint",        placeholder: "0" },
+    { key: "cobranza_pendiente",   labelKey: "cap.field.receivables", hintKey: "cap.field.receivables_hint", placeholder: "0" },
+  ];
+
   const [values, setValues] = useState<Record<FieldKey, string>>({
     ventas: "",
     egresos_semana: "",
@@ -80,7 +63,6 @@ export default function CapturaPage() {
 
   const periodoSemana = useMemo(() => getWeekStartISO(), []);
 
-  // Auth check + fetch historial
   useEffect(() => {
     (async () => {
       try {
@@ -130,20 +112,18 @@ export default function CapturaPage() {
     [parsed, historialEgresos]
   );
 
-  const sc = semaforo(result.score_general);
+  const sc = semaforoCaptura(result.score_general);
   const hasInput =
     parsed.ventas > 0 ||
     parsed.egresos_semana > 0 ||
     parsed.saldo_bancos_efectivo > 0 ||
     parsed.cobranza_pendiente > 0;
 
-  // Transparencia de cobranza
   const factorCobranza = getFactorCobranza(new Date());
   const semanaMes = getSemanaMes(new Date());
   const cobranzaPonderada = Math.round(parsed.cobranza_pendiente * factorCobranza);
   const showCobranzaMsg = parsed.cobranza_pendiente > 0;
 
-  // Alerta de caída de ventas >15% vs promedio previo
   const ventasAlerta =
     promVentasPrev !== null &&
     promVentasPrev > 0 &&
@@ -157,7 +137,7 @@ export default function CapturaPage() {
     setError(null);
 
     if (parsed.egresos_semana <= 0) {
-      setError("Captura al menos los egresos de la semana para calcular tu Score.");
+      setError(t('cap.err_expenses'));
       return;
     }
     if (
@@ -166,7 +146,7 @@ export default function CapturaPage() {
       parsed.saldo_bancos_efectivo > MAX_MONTO ||
       parsed.cobranza_pendiente > MAX_MONTO
     ) {
-      setError("Alguno de los montos es demasiado alto. Verifica las cifras capturadas.");
+      setError(t('cap.err_too_high'));
       return;
     }
 
@@ -199,8 +179,6 @@ export default function CapturaPage() {
         margen_real: score.margen_real,
       };
 
-      console.log("[captura] payload:", payload);
-
       const res = await fetch("/api/pulso/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -209,8 +187,6 @@ export default function CapturaPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        console.error("[captura] api error:", err);
-        // Mostrar error real temporalmente para diagnóstico
         const detail = err?.error ?? err?.code ?? "error desconocido";
         const hint = err?.hint ? ` | Hint: ${err.hint}` : "";
         const code = err?.code ? ` [${err.code}]` : "";
@@ -221,9 +197,8 @@ export default function CapturaPage() {
 
       router.push("/dashboard");
       router.refresh();
-    } catch (err) {
-      console.error("[captura] catch inesperado:", err);
-      setError("Ocurrió un error inesperado al guardar. Inténtalo de nuevo.");
+    } catch {
+      setError(t('cap.err_unexpected'));
       setProcessing(false);
     }
   };
@@ -232,29 +207,32 @@ export default function CapturaPage() {
     <div className="min-h-screen bg-[#F7F5F0] font-sans text-[#1B2624]">
       <header className="sticky top-0 z-10 flex items-center justify-between gap-5 border-b border-black/[0.08] bg-[#F7F5F0] px-6 py-4 md:px-10">
         <Image src="/logo.png" alt="Okomos Finanzas" width={122} height={28} className="h-7 w-auto" priority />
-        <Link
-          href="/dashboard"
-          className="rounded-full px-4 py-2 text-[13px] font-medium text-black/60 transition hover:bg-black/[0.05] hover:text-[#06403C]"
-        >
-          ← Volver al Dashboard
-        </Link>
+        <div className="flex items-center gap-3">
+          <LanguageToggle />
+          <Link
+            href="/dashboard"
+            className="rounded-full px-4 py-2 text-[13px] font-medium text-black/60 transition hover:bg-black/[0.05] hover:text-[#06403C]"
+          >
+            {t('cap.back')}
+          </Link>
+        </div>
       </header>
 
       <main className="mx-auto flex max-w-[840px] flex-col gap-9 px-6 pb-20 pt-12 md:px-10">
         <section>
           <div className="mb-2 flex items-center gap-3">
             <span className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7DC242]">
-              Captura semanal
+              {t('cap.badge')}
             </span>
             <span className="rounded-full bg-[#06403C]/[0.08] px-3 py-1 font-poppins text-[12px] font-semibold text-[#06403C]">
-              Semana del {periodoSemana}
+              {t('cap.week_of')} {periodoSemana}
             </span>
           </div>
           <h1 className="mb-3 font-poppins text-[30px] font-semibold -tracking-[0.02em] text-[#06403C]">
-            Actualiza tu Pulso
+            {t('cap.title')}
           </h1>
           <p className="max-w-[560px] text-[15px] leading-relaxed text-black/55">
-            Invierte menos de 5 minutos para tomar el control absoluto de tu tesorería. Captura los 4 números clave de esta semana y tu Score de Salud se recalcula al instante.
+            {t('cap.subtitle')}
           </p>
         </section>
 
@@ -266,7 +244,7 @@ export default function CapturaPage() {
                   htmlFor={field.key}
                   className="mb-2.5 font-poppins text-[15px] font-medium text-[#06403C]"
                 >
-                  {field.label}
+                  {t(field.labelKey)}
                 </label>
                 <div className="relative">
                   <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-poppins text-[16px] font-medium text-black/35">
@@ -285,32 +263,29 @@ export default function CapturaPage() {
                   />
                 </div>
                 <p className="mt-2 text-[12.5px] leading-relaxed text-black/45">
-                  {field.hint}
+                  {t(field.hintKey)}
                 </p>
               </div>
             ))}
           </div>
 
-          {/* Transparencia de cobranza */}
           {showCobranzaMsg && (
             <div className="rounded-2xl border border-[#9AD9CF]/40 bg-[#9AD9CF]/10 px-5 py-4">
               <p className="text-[13.5px] leading-relaxed text-[#06403C]">
-                Cobranza pendiente:{" "}
+                {t('cap.cobranza_pending')}{" "}
                 <span className="font-semibold">{mxn(parsed.cobranza_pendiente)}</span>
-                {" "}— Estimado a cobrar este mes:{" "}
+                {" "}— {t('cap.cobranza_estimated')}{" "}
                 <span className="font-semibold">{mxn(cobranzaPonderada)}</span>.{" "}
-                Semana {semanaMes} del ciclo — aplicamos {Math.round(factorCobranza * 100)}% al saldo reportado.
+                {t('cap.cobranza_week')} {semanaMes} {t('cap.cobranza_cycle')} {Math.round(factorCobranza * 100)}% {t('cap.cobranza_to')}
               </p>
             </div>
           )}
 
-          {/* Alerta de caída de ventas */}
           {ventasAlerta && (
             <div className="rounded-2xl border border-[#E8A33D]/30 bg-[#E8A33D]/10 px-5 py-4">
               <p className="text-[13.5px] leading-relaxed text-[#9a6a1a]">
-                <span className="font-semibold">Tendencia comercial:</span> tus ventas de esta
-                semana están más de 15% por debajo de tu promedio reciente. Revisa si hay
-                una causa puntual o una tendencia que atender.
+                <span className="font-semibold">{t('score.warning')}:</span>{" "}
+                {t('cap.alert_sales')}
               </p>
             </div>
           )}
@@ -323,10 +298,10 @@ export default function CapturaPage() {
                   style={{ background: sc.color, boxShadow: `0 0 0 4px ${sc.halo}` }}
                 />
                 <span className="text-[13px] font-medium" style={{ color: sc.color }}>
-                  {hasInput ? sc.label : "Esperando tus números"}
+                  {hasInput ? t(sc.labelKey) : t('cap.score_waiting')}
                 </span>
               </div>
-              <div className="text-[13px] text-black/55">Score de Salud proyectado</div>
+              <div className="text-[13px] text-black/55">{t('cap.score_label')}</div>
             </div>
             <div className="flex items-baseline gap-1.5">
               <span
@@ -355,11 +330,11 @@ export default function CapturaPage() {
               disabled={processing}
               className="w-full max-w-[440px] rounded-2xl bg-[#7DC242] px-8 py-4 font-poppins text-[16px] font-semibold text-white shadow-[0_16px_34px_-18px_rgba(125,194,66,0.9)] transition hover:brightness-95 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {processing ? "Guardando tu pulso…" : "Calcular Score y Guardar Pulso Semanal"}
+              {processing ? t('cap.saving') : t('cap.submit')}
             </button>
             {processing && (
               <p className="text-[13px] font-medium text-black/50">
-                Estamos ordenando tu tesorería…
+                {t('cap.processing')}
               </p>
             )}
           </div>
