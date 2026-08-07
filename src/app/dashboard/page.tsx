@@ -21,6 +21,7 @@ import {
 } from "@/lib/scoring";
 import { createClient, clearSessionCookies } from "@/lib/supabase/client";
 import { BiometricPrompt } from "@/components/auth/BiometricPrompt";
+import { PasskeyManager } from "@/components/auth/PasskeyManager";
 import { InstallAppModal } from "@/components/dashboard/InstallAppModal";
 import { BIOMETRIC_PREF_KEY } from "@/lib/auth/session-config";
 import { isPlatformAuthenticatorAvailable } from "@/lib/auth/webauthn-client";
@@ -199,6 +200,7 @@ function DashboardContent() {
   const [dataRefreshKey, setDataRefreshKey] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
+  const [showPasskeyManager, setShowPasskeyManager] = useState(false);
   const [userEmail, setUserEmail] = useState("");
 
   useEffect(() => {
@@ -566,6 +568,18 @@ function DashboardContent() {
             <span className="sm:hidden">Instalar</span>
             <span aria-hidden="true">📱</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setShowPasskeyManager(true)}
+            title="Gestionar Face ID / Touch ID"
+            className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.12] px-3.5 py-2 text-[13px] font-medium text-black/60 transition hover:border-[#06403C]/40 hover:text-[#06403C]"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 11c1.66 0 3-1.34 3-3S13.66 5 12 5 9 6.34 9 8s1.34 3 3 3z"/>
+              <path d="M4 12c1.2-3.2 4.2-5 8-5s6.8 1.8 8 5"/>
+            </svg>
+            <span className="hidden sm:inline">Face ID</span>
+          </button>
           <span className="h-7 w-px bg-black/10" />
           <div className="text-right leading-tight">
             <div className="text-[13.5px] text-black/55">{displayIdentity.company}</div>
@@ -635,8 +649,16 @@ function DashboardContent() {
             <BiometricPrompt
               email={userEmail}
               onDismiss={() => setShowBiometricPrompt(false)}
+              onEnabled={() => setShowBiometricPrompt(false)}
             />
           </div>
+        )}
+
+        {showPasskeyManager && userEmail && (
+          <PasskeyManager
+            email={userEmail}
+            onClose={() => setShowPasskeyManager(false)}
+          />
         )}
 
         {!hasData && (
