@@ -35,7 +35,8 @@ export default function LoginPage() {
     router.refresh()
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(e?: React.FormEvent<HTMLFormElement>) {
+    e?.preventDefault()
     setLoading(true)
     setError(null)
     setMessage(null)
@@ -129,14 +130,17 @@ export default function LoginPage() {
             ))}
           </div>
 
-          <div className="space-y-4">
+          <form onSubmit={handleSubmit} method="post" className="space-y-4">
             {mode === 'register' && (
               <div>
-                <label className="block text-sm font-medium text-teal-deep mb-1.5">
+                <label htmlFor="business-name" className="block text-sm font-medium text-teal-deep mb-1.5">
                   Nombre de tu empresa <span className="text-teal/40">(opcional)</span>
                 </label>
                 <input
+                  id="business-name"
+                  name="organization"
                   type="text"
+                  autoComplete="organization"
                   value={businessName}
                   onChange={(e) => setBusinessName(e.target.value)}
                   placeholder="Distribuidora García S.A."
@@ -148,15 +152,17 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-teal-deep mb-1.5">
+              <label htmlFor="email" className="block text-sm font-medium text-teal-deep mb-1.5">
                 Correo electrónico
               </label>
               <input
+                id="email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu@empresa.com"
-                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                 className="w-full px-4 py-2.5 rounded-lg border border-mint/50 bg-cream/50
                            text-teal-deep placeholder:text-teal/30 focus:outline-none
                            focus:border-teal focus:ring-1 focus:ring-teal/30 transition-colors"
@@ -165,7 +171,7 @@ export default function LoginPage() {
 
             <div>
               <div className="flex items-baseline justify-between mb-1.5">
-                <label className="block text-sm font-medium text-teal-deep">
+                <label htmlFor="password" className="block text-sm font-medium text-teal-deep">
                   Contraseña
                 </label>
                 {mode === 'login' && (
@@ -179,11 +185,13 @@ export default function LoginPage() {
               </div>
               <div className="relative">
                 <input
+                  id="password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Mínimo 6 caracteres"
-                  onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                   className="w-full px-4 py-2.5 pr-11 rounded-lg border border-mint/50 bg-cream/50
                              text-teal-deep placeholder:text-teal/30 focus:outline-none
                              focus:border-teal focus:ring-1 focus:ring-teal/30 transition-colors"
@@ -237,7 +245,7 @@ export default function LoginPage() {
             )}
 
             <button
-              onClick={handleSubmit}
+              type="submit"
               disabled={loading || !email || !password}
               className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -268,7 +276,7 @@ export default function LoginPage() {
                 />
               </>
             )}
-          </div>
+          </form>
         </div>
 
         <p className="text-center text-xs text-teal/50 mt-6">
