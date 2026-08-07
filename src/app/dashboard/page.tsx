@@ -495,18 +495,27 @@ function DashboardContent() {
     const now = new Date();
     const factorBase = getFactorCobranza(now);
     const semanasRestantes = getSemanasRestantesMes(now);
-    // Stress: delay adicional sobre el factor automático
+
+    // Ventas estresadas: caída aplicada sobre ventas actuales
+    const ventasBase = safeData.ventas;
+    const ventasStress = ventasBase * (1 - ventasDrop / 100);
+
+    // Cobranza estresada: delay adicional reduce el factor de recuperación
     const stressFactor = Math.max(0, 1 - cobranzaDelay / 60);
     const effectiveFactor = factorBase * stressFactor;
 
-    const projected =
-      safeData.saldo_bancos_efectivo +
-      safeData.cobranza_pendiente * effectiveFactor -
-      safeData.egresos_semana * semanasRestantes;
-
+    // Escenario base (sin estrés): incluye ventas + cobranza con factor normal
     const baseProjected =
       safeData.saldo_bancos_efectivo +
+      ventasBase +
       safeData.cobranza_pendiente * factorBase -
+      safeData.egresos_semana * semanasRestantes;
+
+    // Escenario estresado: ventas reducidas + cobranza degradada
+    const projected =
+      safeData.saldo_bancos_efectivo +
+      ventasStress +
+      safeData.cobranza_pendiente * effectiveFactor -
       safeData.egresos_semana * semanasRestantes;
 
     const delta = projected - baseProjected;
@@ -518,7 +527,7 @@ function DashboardContent() {
     else if (projected < gastoMensual * 2) { color = AMBER; halo = "rgba(232,163,61,0.22)"; label = "Margen ajustado"; }
 
     return { projected, delta, coverage, color, halo, label };
-  }, [cobranzaDelay, safeData]);
+  }, [cobranzaDelay, ventasDrop, safeData]);
 
   if (isLoading) {
     return (
