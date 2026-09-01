@@ -209,6 +209,7 @@ function DashboardContent() {
   const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
   const [showPasskeyManager, setShowPasskeyManager] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const [latestPeriodo, setLatestPeriodo] = useState<Date>(new Date());
 
   useEffect(() => {
     let active = true;
@@ -386,6 +387,8 @@ function DashboardContent() {
           setData(normalizeData(last));
           setDbScore(safeNumber(last.score_general));
           setHasData(true);
+          // Fecha del registro para calcular factorCobranza con el período correcto
+          setLatestPeriodo(new Date(last.periodo_semana + "T12:00:00"));
         } else {
           setData(EMPTY_DATA);
           setDbScore(null);
@@ -502,29 +505,25 @@ function DashboardContent() {
   const chartData = trend;
 
   const sim = useMemo(() => {
-    const now = new Date();
+    // Usa la fecha del registro, no la fecha actual del sistema
+    const now = hasData ? latestPeriodo : new Date();
     const factorBase = getFactorCobranza(now);
     const semanasRestantes = getSemanasRestantesMes(now);
-
-    // Ventas estresadas: caída aplicada sobre ventas actuales
-    const ventasBase = safeData.ventas;
-    const ventasStress = ventasBase * (1 - ventasDrop / 100);
 
     // Cobranza estresada: delay adicional reduce el factor de recuperación
     const stressFactor = Math.max(0, 1 - cobranzaDelay / 60);
     const effectiveFactor = factorBase * stressFactor;
 
-    // Escenario base (sin estrés): incluye ventas + cobranza con factor normal
+    // Escenario base (sin estrés): caja = saldo + cobranza×factor − egresos
+    // Ventas NO entran — son devengado, no cobrado
     const baseProjected =
       safeData.saldo_bancos_efectivo +
-      ventasBase +
       safeData.cobranza_pendiente * factorBase -
       safeData.egresos_semana * semanasRestantes;
 
-    // Escenario estresado: ventas reducidas + cobranza degradada
+    // Escenario estresado: cobranza degradada por retraso
     const projected =
       safeData.saldo_bancos_efectivo +
-      ventasStress +
       safeData.cobranza_pendiente * effectiveFactor -
       safeData.egresos_semana * semanasRestantes;
 
@@ -537,7 +536,7 @@ function DashboardContent() {
     else if (projected < gastoMensual * 2) { color = AMBER; halo = "rgba(232,163,61,0.22)"; labelKey = "sim.tight"; }
 
     return { projected, delta, coverage, color, halo, labelKey };
-  }, [cobranzaDelay, ventasDrop, safeData]);
+  }, [cobranzaDelay, safeData, hasData, latestPeriodo]);
 
   if (isLoading) {
     return (

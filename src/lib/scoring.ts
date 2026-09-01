@@ -69,6 +69,21 @@ export function getWeekStartISO(date: Date = new Date()): string {
 // ── Runway (meses de operación a 8 semanas) ────────────────────────────────
 
 /**
+ * Media truncada de hasta 8 semanas de egresos.
+ * Elimina el máximo y el mínimo cuando hay al menos 3 datos.
+ */
+export function calcularEgresoPromedio(historial: number[]): number {
+  const validos = historial.filter((v) => Number.isFinite(v) && v >= 0)
+  if (validos.length === 0) return 0
+  let muestra = [...validos].slice(0, 8)
+  if (muestra.length >= 3) {
+    const sorted = [...muestra].sort((a, b) => a - b)
+    muestra = sorted.slice(1, sorted.length - 1)
+  }
+  return muestra.reduce((s, v) => s + v, 0) / muestra.length
+}
+
+/**
  * Calcula runway con media truncada sobre las últimas 8 semanas de egresos.
  * Elimina la semana más alta y la más baja antes de promediar.
  * Si hay menos de 8 registros usa los disponibles y adjunta una nota.
@@ -83,20 +98,12 @@ export function calcularRunway(
     return { runway_meses: 0 }
   }
 
-  let nota: string | undefined
-  let muestra = [...semanas].slice(0, 8)
+  const nota: string | undefined =
+    semanas.slice(0, 8).length < 8
+      ? 'Tu promedio de cobertura se estabilizará tras 8 semanas de registro'
+      : undefined
 
-  if (muestra.length < 8) {
-    nota = 'Tu promedio de cobertura se estabilizará tras 8 semanas de registro'
-  }
-
-  // Media truncada: elimina max y min si hay al menos 3 datos
-  if (muestra.length >= 3) {
-    const sorted = [...muestra].sort((a, b) => a - b)
-    muestra = sorted.slice(1, sorted.length - 1)
-  }
-
-  const gastoSemanalBase = muestra.reduce((s, v) => s + v, 0) / muestra.length
+  const gastoSemanalBase = calcularEgresoPromedio(semanas)
   const gastoMensualEstabilizado = gastoSemanalBase * 4.33
 
   const runway_meses =
@@ -121,16 +128,21 @@ export function calcularScoreSemanal(
 ): WeeklyScoreResult {
   const { saldo_bancos_efectivo, egresos_semana, cobranza_pendiente, ventas } = inputs
 
-  // Proyección de caja — ventas excluidas del disponible
   const factorCobranza = getFactorCobranza(date)
   const semanasRestantes = getSemanasRestantesMes(date)
-  const caja_proyectada =
-    saldo_bancos_efectivo +
-    cobranza_pendiente * factorCobranza -
-    egresos_semana * semanasRestantes
 
   // Runway con historial (incluye la semana actual como primera entrada)
   const egresosConActual = [egresos_semana, ...historialEgresos]
+
+  // Proyección de caja:
+  // - Resta egresos_semana siempre (ya comprometidos esta semana)
+  // - Resta promedio truncado × semanas futuras del mes
+  const egresoPromedio = calcularEgresoPromedio(egresosConActual)
+  const caja_proyectada =
+    saldo_bancos_efectivo +
+    cobranza_pendiente * factorCobranza -
+    egresos_semana -
+    (semanasRestantes > 0 ? egresoPromedio * semanasRestantes : 0)
   const { runway_meses, nota: runwayNota } = calcularRunway(egresosConActual, saldo_bancos_efectivo)
 
   // Margen real de la semana
