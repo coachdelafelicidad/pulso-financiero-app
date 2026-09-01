@@ -54,7 +54,8 @@ export function getSemanasRestantesMes(date: Date): number {
   const year = date.getFullYear()
   const month = date.getMonth()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
-  return (daysInMonth - date.getDate()) / 7
+  const diasRestantes = daysInMonth - date.getDate()
+  return Math.floor(diasRestantes / 7)
 }
 
 /** ISO date YYYY-MM-DD del lunes de la semana actual. */
