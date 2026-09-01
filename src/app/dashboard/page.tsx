@@ -519,13 +519,15 @@ function DashboardContent() {
     const baseProjected =
       safeData.saldo_bancos_efectivo +
       safeData.cobranza_pendiente * factorBase -
-      safeData.egresos_semana * semanasRestantes;
+      safeData.egresos_semana -
+      (semanasRestantes > 0 ? safeData.egresos_semana * semanasRestantes : 0);
 
     // Escenario estresado: cobranza degradada por retraso
     const projected =
       safeData.saldo_bancos_efectivo +
       safeData.cobranza_pendiente * effectiveFactor -
-      safeData.egresos_semana * semanasRestantes;
+      safeData.egresos_semana -
+      (semanasRestantes > 0 ? safeData.egresos_semana * semanasRestantes : 0);
 
     const delta = projected - baseProjected;
     const gastoMensual = safeData.egresos_semana * 4.33;
