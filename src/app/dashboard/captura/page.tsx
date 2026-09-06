@@ -8,6 +8,7 @@ import {
   calcularScoreSemanal,
   getFactorCobranza,
   getSemanaMes,
+  getSemanasDelMes,
   getWeekStartISO,
   hoyOperacion,
 } from "@/lib/scoring";
@@ -139,8 +140,10 @@ export default function CapturaPage() {
     parsed.saldo_bancos_efectivo > 0 ||
     parsed.cobranza_pendiente > 0;
 
-  const factorCobranza = getFactorCobranza(hoyOperacion());
-  const semanaMes = getSemanaMes(hoyOperacion());
+  const hoy = hoyOperacion();
+  const factorCobranza = getFactorCobranza(hoy);
+  const semanaMes = getSemanaMes(hoy);
+  const semanasDelMes = getSemanasDelMes(hoy);
   const cobranzaPonderada = Math.round(parsed.cobranza_pendiente * factorCobranza);
   const showCobranzaMsg = parsed.cobranza_pendiente > 0;
 
@@ -310,7 +313,7 @@ export default function CapturaPage() {
                 <span className="font-semibold">{mxn(parsed.cobranza_pendiente)}</span>
                 {" "}— {t('cap.cobranza_estimated')}{" "}
                 <span className="font-semibold">{mxn(cobranzaPonderada)}</span>.{" "}
-                {t('cap.cobranza_week')} {semanaMes} {t('cap.cobranza_cycle')} {Math.round(factorCobranza * 100)}% {t('cap.cobranza_to')}
+                {t('cap.cobranza_week')} {semanaMes} {t('cap.cobranza_cycle')} {semanasDelMes} {t('cap.cobranza_apply')} {Math.round(factorCobranza * 100)}% {t('cap.cobranza_to')}
               </p>
             </div>
           )}

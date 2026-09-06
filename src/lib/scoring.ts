@@ -30,32 +30,44 @@ export interface WeeklyScoreResult extends ScoreResult {
 
 // ── Helpers de calendario ──────────────────────────────────────────────────
 
-/** Semana del mes (1-4) basada en el día del mes. */
-export function getSemanaMes(date: Date): 1 | 2 | 3 | 4 {
-  const day = date.getDate()
-  if (day <= 7) return 1
-  if (day <= 14) return 2
-  if (day <= 21) return 3
-  return 4
+export type SemanaMes = 1 | 2 | 3 | 4 | 5
+
+function daysInMonthOf(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+}
+
+/** 4 semanas si el mes tiene 28 días; 5 si tiene 29–31. */
+export function getSemanasDelMes(date: Date): 4 | 5 {
+  return Math.ceil(daysInMonthOf(date) / 7) as 4 | 5
+}
+
+/**
+ * Semana del mes (1–5) según el día calendario.
+ * 1–7 → 1, 8–14 → 2, 15–21 → 3, 22–28 → 4, 29–31 → 5.
+ */
+export function getSemanaMes(date: Date): SemanaMes {
+  const week = Math.min(5, Math.max(1, Math.ceil(date.getDate() / 7))) as SemanaMes
+  return Math.min(week, getSemanasDelMes(date)) as SemanaMes
 }
 
 /**
  * Factor de cobrabilidad estimada según la semana del mes.
- * Semana 1 → 100%, 2 → 75%, 3 → 50%, 4 → 25%.
+ * Semana 1 → 100%, 2 → 75%, 3 → 50%, 4 → 25%, 5 → 0%.
  */
 export function getFactorCobranza(date: Date): number {
-  const semana = getSemanaMes(date)
-  const factores: Record<1 | 2 | 3 | 4, number> = { 1: 1.0, 2: 0.75, 3: 0.50, 4: 0.25 }
-  return factores[semana]
+  const factores: Record<SemanaMes, number> = {
+    1: 1.0,
+    2: 0.75,
+    3: 0.5,
+    4: 0.25,
+    5: 0,
+  }
+  return factores[getSemanaMes(date)]
 }
 
-/** Semanas que faltan para terminar el mes en curso. */
+/** Semanas de gasto que faltan después de la semana actual. */
 export function getSemanasRestantesMes(date: Date): number {
-  const year = date.getFullYear()
-  const month = date.getMonth()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const diasRestantes = daysInMonth - date.getDate()
-  return Math.floor(diasRestantes / 7)
+  return Math.max(0, getSemanasDelMes(date) - getSemanaMes(date))
 }
 
 /**
@@ -74,6 +86,15 @@ export function hoyOperacion(now: Date = new Date()): Date {
   const m = parts.find((p) => p.type === "month")?.value
   const d = parts.find((p) => p.type === "day")?.value
   return new Date(`${y}-${m}-${d}T12:00:00`)
+}
+
+export function getCalendarioProyeccion(date: Date = hoyOperacion()) {
+  return {
+    semana: getSemanaMes(date),
+    semanasDelMes: getSemanasDelMes(date),
+    factor: getFactorCobranza(date),
+    restantes: getSemanasRestantesMes(date),
+  }
 }
 
 /**

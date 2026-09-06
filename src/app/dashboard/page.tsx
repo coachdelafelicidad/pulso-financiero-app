@@ -18,6 +18,7 @@ import {
   calcularCajaFinDeMes,
   calcularEgresoPromedio,
   calcularScoreSemanal,
+  getCalendarioProyeccion,
   hoyOperacion,
 } from "@/lib/scoring";
 import { createClient, clearSessionCookies } from "@/lib/supabase/client";
@@ -562,6 +563,7 @@ function DashboardContent() {
     // Fin de mes usa el día de hoy en México, no el lunes ISO del periodo.
     // Si el periodo es 31 ago y hoy es 6 sep, el factor sigue siendo 100%.
     const now = hoyOperacion();
+    const cal = getCalendarioProyeccion(now);
 
     // Cobranza estresada: delay adicional reduce el factor de recuperación
     const stressFactor = Math.max(0, 1 - cobranzaDelay / 60);
@@ -612,7 +614,17 @@ function DashboardContent() {
           ? -100
           : 0;
 
-    return { projected, delta, coverage, egresoPromedio, color, halo, labelKey, margenEstresado };
+    return {
+      projected,
+      delta,
+      coverage,
+      egresoPromedio,
+      color,
+      halo,
+      labelKey,
+      margenEstresado,
+      cal,
+    };
   }, [cobranzaDelay, ventasDrop, safeData, historialEgresos]);
 
   if (isLoading) {
@@ -971,6 +983,14 @@ function DashboardContent() {
               <div className="mt-2 text-[13.5px] font-medium" style={{ color: sim.delta < 0 ? RED : "rgba(27,38,36,0.5)" }}>
                 {sim.delta >= 0 ? "+" : "−"}{mxn(Math.abs(sim.delta))} {t('sim.vs_base')}
               </div>
+              <p className="mt-3 text-[12.5px] leading-relaxed text-black/45">
+                {t("sim.calendar", {
+                  week: sim.cal.semana,
+                  total: sim.cal.semanasDelMes,
+                  factor: Math.round(sim.cal.factor * 100),
+                  left: sim.cal.restantes,
+                })}
+              </p>
               <div className="my-5 h-px bg-black/[0.08]" />
               <div className="flex items-baseline justify-between">
                 <span className="text-[13.5px] text-black/55">{t("sim.avg_weekly_spend")}</span>
