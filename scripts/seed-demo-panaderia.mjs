@@ -1,5 +1,5 @@
 /**
- * Genera 104 semanas (24 meses) de Tu Pulso para Panadería El Trigo.
+ * Genera 104 semanas (24 meses) de Pulso by Okomos para Panadería El Trigo.
  * Uso: node scripts/seed-demo-panaderia.mjs > /tmp/panaderia-weeks.sql
  */
 function mondayUTC(date) {

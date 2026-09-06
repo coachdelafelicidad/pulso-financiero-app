@@ -44,11 +44,11 @@ export const translations: Translations = {
   /* ── Dashboard · banners ───────────────────────────────── */
   "dash.syncing":             { es: "Sincronizando tu suscripción y actualizando datos…", en: "Syncing your subscription and updating data…" },
   "dash.premium_badge":       { es: "Suscripción activa",              en: "Active subscription" },
-  "dash.premium_body":        { es: "¡Bienvenido a Tu Pulso Premium! Tu pago fue procesado correctamente.", en: "Welcome to Tu Pulso Premium! Your payment was processed successfully." },
+  "dash.premium_body":        { es: "¡Bienvenido a Pulso by Okomos! Tu pago fue procesado correctamente.", en: "Welcome to Pulso by Okomos! Your payment was processed successfully." },
   "dash.no_data":             { es: "Aún no tienes un pulso registrado. Usa",   en: "You don't have a pulse registered yet. Use" },
   "dash.no_data_cta":         { es: "Registrar Pulso Semanal",         en: "Register Weekly Pulse" },
   "dash.no_data_suffix":      { es: "para activar tu score y métricas.", en: "to activate your score and metrics." },
-  "dash.free_banner":         { es: "Llevas una semana de prueba. Activa Tu Pulso para seguir registrando y usar el simulador.", en: "You've used your free week. Activate Tu Pulso to keep recording and use the simulator." },
+  "dash.free_banner":         { es: "Llevas una semana de prueba. Activa Pulso by Okomos para seguir registrando y usar el simulador.", en: "You've used your free week. Activate Pulso by Okomos to keep recording and use the simulator." },
   "dash.free_cta":            { es: "Activar por $499/mes",            en: "Activate for $499/mo" },
   "dash.sim_locked":          { es: "El simulador de estrés es parte de la suscripción.", en: "The stress simulator is part of the subscription." },
   "dash.manage_billing":      { es: "Administrar suscripción",         en: "Manage subscription" },
@@ -56,8 +56,8 @@ export const translations: Translations = {
   "dash.portal_error":        { es: "No se pudo abrir el portal de suscripción.", en: "Could not open the billing portal." },
 
   /* ── Dashboard · main section ──────────────────────────── */
-  "dash.pulse_badge":         { es: "Tu Pulso · esta semana",          en: "Your Pulse · this week" },
-  "dash.pulse_title":         { es: "Tu Pulso esta semana",            en: "Your Pulse this week" },
+  "dash.pulse_badge":         { es: "Pulso by Okomos · esta semana",   en: "Pulso by Okomos · this week" },
+  "dash.pulse_title":         { es: "Tu pulso esta semana",            en: "Your pulse this week" },
   "dash.register_cta":        { es: "Registrar Pulso Semanal",         en: "Register Weekly Pulse" },
   "dash.score_label":         { es: "Score de salud financiera",       en: "Financial health score" },
 

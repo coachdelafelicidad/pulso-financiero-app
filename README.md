@@ -1,4 +1,4 @@
-# Tu Pulso por Okomos — App
+# Pulso by Okomos — App
 
 Sistema de seguimiento financiero semanal para PyMEs mexicanas.  
 URL de producción: https://app.okomosfinanzas.com  

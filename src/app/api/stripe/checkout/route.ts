@@ -54,7 +54,7 @@ export async function POST() {
               price_data: {
                 currency: "mxn",
                 product_data: {
-                  name: "Tu Pulso",
+                  name: "Pulso by Okomos",
                   description: "Tablero ejecutivo, captura semanal y simulador de tesorería",
                 },
                 unit_amount: 49900,

@@ -46,7 +46,7 @@ export function InstallAppModal({ onClose }: Props) {
               App en tu celular
             </div>
             <h2 id="install-app-title" className="font-poppins text-[22px] font-semibold -tracking-[0.02em] text-[#06403C]">
-              Instalar Tu Pulso
+              Instalar Pulso by Okomos
             </h2>
             <p className="mt-1 text-[13.5px] text-black/55">
               Accede como app nativa, en pantalla completa y con un solo toque.

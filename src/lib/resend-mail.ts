@@ -1,4 +1,4 @@
-const FROM = "Tu Pulso · Okomos <hola@okomosfinanzas.com>";
+const FROM = "Pulso by Okomos <hola@okomosfinanzas.com>";
 
 export async function sendPasswordResetOtpEmail(to: string, otp: string): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
@@ -20,14 +20,14 @@ export async function sendPasswordResetOtpEmail(to: string, otp: string): Promis
     body: JSON.stringify({
       from: FROM,
       to: [to],
-      subject: "Tu código para restablecer contraseña — Tu Pulso · Okomos",
+      subject: "Tu código para restablecer contraseña — Pulso by Okomos",
       text: `Tu código de verificación es: ${otp}
 
 Ingresa este código en ${appUrl}/reset-password junto con tu correo y tu nueva contraseña.
 
 El código expira en 15 minutos. Si no solicitaste este cambio, ignora este correo.
 
-— Tu Pulso · Okomos by Okomos Finanzas`,
+— Pulso by Okomos`,
     }),
   });
 
