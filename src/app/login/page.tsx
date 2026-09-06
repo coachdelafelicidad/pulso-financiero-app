@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { createClient, syncSessionToCookies } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { safeInternalPath } from '@/lib/navigation'
 import { BiometricLoginButton, useBiometricLoginAvailability } from '@/components/auth/BiometricLoginButton'
 import { BIOMETRIC_EMAIL_KEY } from '@/lib/auth/session-config'
 import { useLanguage } from '@/lib/i18n/LanguageContext'
@@ -11,9 +12,13 @@ import { LanguageToggle } from '@/components/ui/LanguageToggle'
 
 const SITE_URL = 'https://app.okomosfinanzas.com'
 
-export default function LoginPage() {
+function LoginForm() {
   const { t } = useLanguage()
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const searchParams = useSearchParams()
+  const nextPath = safeInternalPath(searchParams.get('next'))
+  const [mode, setMode] = useState<'login' | 'register'>(
+    searchParams.get('next') === '/subscribe' ? 'register' : 'login'
+  )
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -34,7 +39,7 @@ export default function LoginPage() {
 
   async function finishLogin() {
     await syncSessionToCookies()
-    router.push('/dashboard')
+    router.push(nextPath)
     router.refresh()
   }
 
@@ -50,7 +55,7 @@ export default function LoginPage() {
         password,
         options: {
           data: { business_name: businessName },
-          emailRedirectTo: `${SITE_URL}/dashboard`,
+          emailRedirectTo: `${SITE_URL}${nextPath}`,
         },
       })
 
@@ -275,7 +280,7 @@ export default function LoginPage() {
                 <BiometricLoginButton
                   email={email}
                   onSuccess={() => {
-                    router.push('/dashboard')
+                    router.push(nextPath)
                     router.refresh()
                   }}
                   onError={setError}
@@ -286,9 +291,30 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-teal/50 mt-6">
-          {t('login.privacy')}
+          {t('login.privacy')}{" "}
+          <Link href="/privacidad" className="underline underline-offset-2">
+            {t('login.privacy_link')}
+          </Link>
+          {" · "}
+          <Link href="/terminos" className="underline underline-offset-2">
+            {t('login.terms_link')}
+          </Link>
         </p>
       </div>
     </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-cream">
+          <p className="text-sm text-teal">Cargando…</p>
+        </main>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   )
 }

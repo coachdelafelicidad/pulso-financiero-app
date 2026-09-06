@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { getStripe, stripeConfigError } from "@/lib/stripe";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { activateProfileSubscription } from "@/lib/subscription";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,12 +28,12 @@ export async function GET(request: NextRequest) {
   try {
     const configError = stripeConfigError();
     if (configError) {
-      return NextResponse.json({ error: configError, stripeMode: "test_required" }, { status: 503 });
+      return NextResponse.json({ error: configError }, { status: 503 });
     }
 
     const stripe = getStripe();
     if (!stripe) {
-      return NextResponse.json({ error: "Stripe Test Mode no disponible." }, { status: 503 });
+      return NextResponse.json({ error: "Stripe no disponible." }, { status: 503 });
     }
 
     const sessionId = request.nextUrl.searchParams.get("session_id");
@@ -60,19 +62,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Sesión no válida para este usuario." }, { status: 403 });
     }
 
-    const custId = customerId(session.customer);
-    const subId = subscriptionId(session.subscription);
-
-    const { error: rpcError } = await supabase.rpc("activate_subscription", {
-      p_user_id: user.id,
-      p_customer_id: custId,
-      p_subscription_id: subId,
-    });
-
-    if (rpcError) {
-      console.error("[stripe/verify-session] RPC error:", rpcError);
-      return NextResponse.json({ error: "No se pudo activar la suscripción." }, { status: 500 });
+    const admin = getSupabaseAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: "Supabase admin no configurado." }, { status: 503 });
     }
+
+    await activateProfileSubscription(
+      admin,
+      user.id,
+      customerId(session.customer),
+      subscriptionId(session.subscription)
+    );
 
     return NextResponse.json({
       ok: true,

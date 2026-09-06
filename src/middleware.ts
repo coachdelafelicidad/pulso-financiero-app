@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE_OPTIONS } from "@/lib/auth/session-config";
+import { safeInternalPath } from "@/lib/navigation";
 
 function applySessionCookies(target: NextResponse, source: NextResponse) {
   source.cookies.getAll().forEach((cookie) => {
@@ -46,15 +47,20 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isProtected =
-    pathname.startsWith("/quiz") || pathname.startsWith("/dashboard");
+    pathname.startsWith("/quiz") ||
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/subscribe");
 
   if (isProtected && !user) {
-    const redirect = NextResponse.redirect(new URL("/login", request.url));
+    const login = new URL("/login", request.url);
+    login.searchParams.set("next", pathname + request.nextUrl.search);
+    const redirect = NextResponse.redirect(login);
     return applySessionCookies(redirect, supabaseResponse);
   }
 
   if (pathname === "/login" && user) {
-    const redirect = NextResponse.redirect(new URL("/dashboard", request.url));
+    const next = safeInternalPath(request.nextUrl.searchParams.get("next"));
+    const redirect = NextResponse.redirect(new URL(next, request.url));
     return applySessionCookies(redirect, supabaseResponse);
   }
 
@@ -62,5 +68,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/quiz/:path*", "/login", "/dashboard", "/dashboard/:path*"],
+  matcher: ["/quiz/:path*", "/login", "/dashboard", "/dashboard/:path*", "/subscribe", "/subscribe/:path*"],
 };

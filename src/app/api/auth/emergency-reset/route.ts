@@ -43,11 +43,14 @@ export async function POST(request: Request) {
     const codeHash = hashOtp(email, otp);
     const now = new Date().toISOString();
 
+    // Se busca el código activo del correo SIN filtrar por hash todavía,
+    // para poder contar intentos fallidos contra ese código puntual y
+    // bloquearlo tras varios fallos — en vez de permitir probar las
+    // 1,000,000 de combinaciones posibles dentro de la ventana de 15 min.
     const { data: rows, error: fetchError } = await admin
       .from("password_reset_codes")
-      .select("id")
+      .select("id, code_hash, verify_attempts")
       .eq("email", email)
-      .eq("code_hash", codeHash)
       .is("used_at", null)
       .gt("expires_at", now)
       .order("created_at", { ascending: false })
@@ -58,12 +61,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Error al validar el código." }, { status: 500 });
     }
 
-    const row = rows?.[0];
-    if (!row) {
-      return NextResponse.json(
+    const row = rows?.[0] as { id: string; code_hash: string; verify_attempts?: number } | undefined;
+    const genericInvalid = () =>
+      NextResponse.json(
         { error: "Código incorrecto o expirado. Solicita uno nuevo." },
         { status: 400 },
       );
+
+    if (!row) {
+      return genericInvalid();
+    }
+
+    const attempts = row.verify_attempts ?? 0;
+    if (attempts >= 5) {
+      await admin.from("password_reset_codes").delete().eq("id", row.id);
+      return genericInvalid();
+    }
+
+    if (row.code_hash !== codeHash) {
+      const { error: attemptError } = await admin
+        .from("password_reset_codes")
+        .update({ verify_attempts: attempts + 1 })
+        .eq("id", row.id);
+      // Si la columna aún no existe (migración 09 no aplicada), se ignora
+      // el error y el reseteo legítimo con el código correcto sigue
+      // funcionando — solo se pierde el límite de intentos hasta migrar.
+      if (attemptError) console.error("[emergency-reset] attempt-count", attemptError);
+      return genericInvalid();
     }
 
     const { data: userId, error: lookupError } = await admin.rpc(

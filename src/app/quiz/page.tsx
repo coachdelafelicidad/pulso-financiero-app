@@ -11,6 +11,8 @@ import {
 } from '@/lib/scoring'
 import { ScoreRing } from '@/components/ui/ScoreRing'
 import { SemaforoBadge } from '@/components/ui/SemaforoBadge'
+import { PaywallGate } from '@/components/billing/PaywallGate'
+import { fetchEntitlement } from '@/lib/entitlement'
 import Link from 'next/link'
 
 interface FormState {
@@ -33,47 +35,33 @@ export default function QuizPage() {
   const [result, setResult] = useState<ReturnType<typeof calcularScoreSemanal> | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [previousCount, setPreviousCount] = useState(0)
-  const [isVip, setIsVip] = useState(false)
-  const [isPremium, setIsPremium] = useState(false)
+  const [blocked, setBlocked] = useState(false)
   const [checking, setChecking] = useState(true)
 
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
+    const supabase = createClient()
     async function checkAuth() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        router.push('/login')
+        router.push('/login?next=/quiz')
         return
       }
 
-      const { data: vipRows } = await supabase
-        .from('vip_emails')
-        .select('email')
-        .limit(1)
-      setIsVip((vipRows?.length ?? 0) > 0)
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('subscription_status')
-        .eq('id', user.id)
-        .maybeSingle()
-      setIsPremium(profile?.subscription_status === 'active')
-
-      const { count } = await supabase
+      const entitlement = await fetchEntitlement(supabase, user)
+      const { data: thisWeek } = await supabase
         .from('pulso_scores')
-        .select('*', { count: 'exact', head: true })
+        .select('id')
         .eq('user_id', user.id)
-      setPreviousCount(count ?? 0)
+        .eq('periodo_semana', getWeekStartISO())
+        .maybeSingle()
+      setBlocked(!entitlement.canCapture && !thisWeek)
 
       setChecking(false)
     }
-    checkAuth()
-  }, [])
-
-  const bloqueado = !checking && !isVip && !isPremium && previousCount >= 1
+    void checkAuth()
+  }, [router])
 
   function handleInput(field: keyof FormState, value: string) {
     const clean = value.replace(/[^0-9.]/g, '')
@@ -81,7 +69,7 @@ export default function QuizPage() {
   }
 
   async function handleSubmit() {
-    if (bloqueado) return
+    if (blocked) return
 
     const ventas = parseFloat(form.ventas)
     const egresos_semana = parseFloat(form.egresos_semana)
@@ -92,57 +80,47 @@ export default function QuizPage() {
       setError('Por favor ingresa los cuatro valores antes de continuar.')
       return
     }
+    if (egresos_semana <= 0) {
+      setError('Los egresos de la semana son obligatorios y deben ser mayores a cero.')
+      return
+    }
 
     setLoading(true)
     setError(null)
 
     const inputs = { ventas, egresos_semana, saldo_bancos_efectivo, cobranza_pendiente }
     const scores = calcularScoreSemanal(inputs)
-    setResult(scores)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const semana = getWeekStartISO()
-      const payload = {
-        user_id: user.id,
-        periodo_semana: semana,
-        ventas,
-        saldo_bancos_efectivo,
-        egresos_semana,
-        cobranza_pendiente,
-        runway_meses: scores.runway_meses,
-        caja_proyectada: scores.caja_proyectada,
-        score_liquidez: scores.score_liquidez,
-        score_rentabilidad: scores.score_rentabilidad,
-        score_planeacion: scores.score_planeacion,
-        score_general: scores.score_general,
-        margen_real: scores.margen_real,
+    // Se guarda por la misma API que usa la captura semanal (valida el
+    // payload en el servidor y bypasea RLS con service role) — antes este
+    // formulario escribía directo desde el navegador, el mismo patrón que
+    // fallaba por RLS/constraints y que motivó mover ese guardado al API.
+    try {
+      const res = await fetch('/api/pulso/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          periodo_semana: getWeekStartISO(),
+          ventas,
+          saldo_bancos_efectivo,
+          egresos_semana,
+          cobranza_pendiente,
+        }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setError(err?.error || 'No se pudo guardar tu Pulso. Intenta de nuevo.')
+        setLoading(false)
+        return
       }
-      console.log('[quiz] payload:', payload)
-
-      const { data: existing, error: selectError } = await supabase
-        .from('pulso_scores')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('periodo_semana', semana)
-        .maybeSingle()
-
-      if (selectError) {
-        console.error('[quiz] selectError:', selectError)
-      } else if (existing?.id) {
-        const { error } = await supabase
-          .from('pulso_scores')
-          .update(payload)
-          .eq('id', existing.id)
-        if (error) console.error('[quiz] updateError:', { message: error.message, details: error.details, hint: error.hint, code: error.code })
-      } else {
-        const { error } = await supabase
-          .from('pulso_scores')
-          .insert(payload)
-        if (error) console.error('[quiz] insertError:', { message: error.message, details: error.details, hint: error.hint, code: error.code })
-      }
+    } catch {
+      setError('No se pudo guardar tu Pulso. Revisa tu conexión e intenta de nuevo.')
+      setLoading(false)
+      return
     }
 
+    setResult(scores)
     setStep('resultado')
     setLoading(false)
   }
@@ -158,8 +136,8 @@ export default function QuizPage() {
     )
   }
 
-  if (bloqueado) {
-    return <PaywallGate />
+  if (blocked) {
+    return <PaywallGate backHref="/dashboard" />
   }
 
   if (step === 'resultado' && result) {
@@ -230,97 +208,6 @@ export default function QuizPage() {
 
         <p className="text-center text-xs text-teal/40 mt-4">
           Tus datos se guardan solo en tu cuenta. Nadie más los ve.
-        </p>
-      </div>
-    </main>
-  )
-}
-
-function PaywallGate() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function handleCheckout() {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const res = await fetch('/api/stripe/checkout', { method: 'POST' })
-      const data = (await res.json()) as { url?: string; error?: string }
-
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || 'No se pudo iniciar el pago.')
-      }
-
-      window.location.href = data.url
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error al conectar con Stripe.')
-      setLoading(false)
-    }
-  }
-
-  return (
-    <main className="min-h-screen bg-teal-deep flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="bg-cream rounded-2xl border border-mint/40 shadow-xl p-8 text-center">
-          <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-green/15">
-            <svg
-              className="h-7 w-7 text-green"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-          </div>
-
-          <h1 className="font-display text-2xl font-bold text-teal-deep leading-snug mb-4">
-            Llegaste al límite de tu versión gratuita.
-          </h1>
-
-          <p className="text-teal text-[15px] leading-relaxed mb-8">
-            Para registrar tus 4 números semana a semana, analizar tu historial
-            con gráficas de tendencia y activar el Simulador de Estrés Financiero,
-            activa tu suscripción.
-          </p>
-
-          {error && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handleCheckout}
-            disabled={loading}
-            className="flex w-full items-center justify-center rounded-lg px-6 py-4 font-display
-                       font-semibold text-white shadow-sm transition-colors duration-200
-                       hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-green/50
-                       disabled:cursor-not-allowed disabled:opacity-60"
-            style={{ backgroundColor: '#7DC242' }}
-          >
-            {loading ? 'Redirigiendo a Stripe…' : 'Activar mi cuenta por $499 MXN/mes'}
-          </button>
-
-          <p className="mt-3 text-xs text-teal/60">
-            Pago seguro procesado por Stripe Checkout.
-          </p>
-
-          <Link
-            href="/dashboard"
-            className="mt-4 inline-block text-sm text-teal/70 hover:text-teal-deep transition-colors"
-          >
-            Volver al dashboard
-          </Link>
-        </div>
-
-        <p className="text-center text-xs text-mint/70 mt-6">
-          Okomos Finanzas · Tu Pulso
         </p>
       </div>
     </main>

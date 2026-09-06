@@ -26,7 +26,9 @@ export const translations: Translations = {
   "login.btn_login":          { es: "Entrar",                          en: "Sign in" },
   "login.btn_register":       { es: "Crear cuenta",                    en: "Create account" },
   "login.quick_access":       { es: "o acceso rápido",                 en: "or quick access" },
-  "login.privacy":            { es: "Al registrarte aceptas el uso de tus datos solo para generar tu Score. No compartimos información con terceros.", en: "By signing up you agree to your data being used only to generate your Score. We don't share data with third parties." },
+  "login.privacy":            { es: "Al registrarte aceptas el aviso de privacidad y los términos de uso. Tus datos solo se usan para generar tu Score.", en: "By signing up you accept the privacy notice and terms of use. Your data is only used to generate your Score." },
+  "login.privacy_link":       { es: "Privacidad",                      en: "Privacy" },
+  "login.terms_link":         { es: "Términos",                        en: "Terms" },
   "login.error_credentials":  { es: "Correo o contraseña incorrectos.", en: "Incorrect email or password." },
   "login.error_register":     { es: "Cuenta creada, pero no pudimos iniciar sesión automáticamente. Intenta entrar con tu correo y contraseña.", en: "Account created, but we couldn't sign in automatically. Try signing in with your email and password." },
 
@@ -46,6 +48,12 @@ export const translations: Translations = {
   "dash.no_data":             { es: "Aún no tienes un pulso registrado. Usa",   en: "You don't have a pulse registered yet. Use" },
   "dash.no_data_cta":         { es: "Registrar Pulso Semanal",         en: "Register Weekly Pulse" },
   "dash.no_data_suffix":      { es: "para activar tu score y métricas.", en: "to activate your score and metrics." },
+  "dash.free_banner":         { es: "Llevas una semana de prueba. Activa Tu Pulso para seguir registrando y usar el simulador.", en: "You've used your free week. Activate Tu Pulso to keep recording and use the simulator." },
+  "dash.free_cta":            { es: "Activar por $499/mes",            en: "Activate for $499/mo" },
+  "dash.sim_locked":          { es: "El simulador de estrés es parte de la suscripción.", en: "The stress simulator is part of the subscription." },
+  "dash.manage_billing":      { es: "Administrar suscripción",         en: "Manage subscription" },
+  "dash.portal_loading":      { es: "Abriendo…",                       en: "Opening…" },
+  "dash.portal_error":        { es: "No se pudo abrir el portal de suscripción.", en: "Could not open the billing portal." },
 
   /* ── Dashboard · main section ──────────────────────────── */
   "dash.pulse_badge":         { es: "Tu Pulso · esta semana",          en: "Your Pulse · this week" },
@@ -69,6 +77,7 @@ export const translations: Translations = {
   "kpi.hint_expenses":        { es: "Costo total de operar esta semana", en: "Total cost of operating this week" },
   "kpi.hint_cash":            { es: "Saldo real en bancos + caja hoy", en: "Actual balance in bank + cash today" },
   "kpi.hint_receivables":     { es: "Lo que te deben tus clientes",    en: "What your customers owe you" },
+  "kpi.vs_last_year":         { es: "vs. año anterior",                en: "vs. last year" },
 
   /* ── Dashboard · chart ─────────────────────────────────── */
   "chart.title":              { es: "Efectivo vs. gastos operativos",  en: "Cash vs. operating expenses" },
@@ -95,8 +104,10 @@ export const translations: Translations = {
   "sim.export":               { es: "Exportar Reporte PDF",            en: "Export PDF Report" },
   "sim.cash_label":           { es: "Caja proyectada a fin de mes",    en: "Projected end-of-month cash" },
   "sim.vs_base":              { es: "vs. escenario base",              en: "vs. base scenario" },
+  "sim.avg_weekly_spend":     { es: "Gasto semanal promedio",          en: "Average weekly expense" },
   "sim.coverage":             { es: "Meses de cobertura de gastos",    en: "Months of expense coverage" },
   "sim.months":               { es: "meses",                           en: "months" },
+  "sim.margin_label":         { es: "Margen con esta caída de ventas", en: "Margin with this sales drop" },
   "sim.healthy":              { es: "Caja saludable",                  en: "Healthy cash" },
   "sim.tight":                { es: "Margen ajustado",                 en: "Tight margin" },
   "sim.risk":                 { es: "Caja en riesgo",                  en: "Cash at risk" },

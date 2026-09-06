@@ -1,91 +1,89 @@
 import Stripe from "stripe";
 
-const TEST_SECRET_PREFIX = "sk_test_";
-const TEST_PUBLISHABLE_PREFIX = "pk_test_";
-
-// Fallback keys read from environment — never hardcode secrets in source
-export const PINNED_STRIPE_TEST_SECRET_KEY =
-  process.env.STRIPE_SECRET_KEY_TEST_FALLBACK ?? "";
-
-export const PINNED_STRIPE_TEST_PUBLISHABLE_KEY =
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_TEST_FALLBACK ?? "";
-
 export type StripeConfigResult =
   | {
       ok: true;
       secretKey: string;
       publishableKey: string;
       priceId: string | null;
-      forcedTestKeys: boolean;
+      mode: "live" | "test";
     }
   | { ok: false; message: string };
 
 let stripeClient: Stripe | null = null;
 let stripeClientKey: string | null = null;
 
-function resolveTestSecretKey(): { secretKey: string; forced: boolean } {
-  const envSecret = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
+/**
+ * Resuelve la configuración de Stripe a partir de las llaves reales del
+ * entorno — el modo (live/test) lo determina el prefijo de la llave
+ * configurada, nunca un valor fijo en código. Así, poner llaves sk_live_ /
+ * pk_live_ en producción activa cobros reales sin tocar el código.
+ */
+export function resolveStripeConfig(): StripeConfigResult {
+  const secretKey = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
+  const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() ?? "";
 
-  if (envSecret.startsWith(TEST_SECRET_PREFIX)) {
-    return { secretKey: envSecret, forced: false };
+  if (!secretKey || !publishableKey) {
+    return {
+      ok: false,
+      message: "Stripe no está configurado (faltan STRIPE_SECRET_KEY o NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).",
+    };
   }
 
-  if (envSecret.startsWith("sk_live_")) {
-    console.warn(
-      "[stripe] STRIPE_SECRET_KEY es sk_live_; forzando claves sk_test_ fijadas.",
-    );
-  } else if (envSecret) {
-    console.warn("[stripe] STRIPE_SECRET_KEY inválida; forzando sk_test_ fijada.");
+  const secretIsLive = secretKey.startsWith("sk_live_");
+  const secretIsTest = secretKey.startsWith("sk_test_");
+  const pubIsLive = publishableKey.startsWith("pk_live_");
+  const pubIsTest = publishableKey.startsWith("pk_test_");
+
+  if (!secretIsLive && !secretIsTest) {
+    return { ok: false, message: "STRIPE_SECRET_KEY inválida: debe empezar con sk_live_ o sk_test_." };
+  }
+  if (!pubIsLive && !pubIsTest) {
+    return {
+      ok: false,
+      message: "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY inválida: debe empezar con pk_live_ o pk_test_.",
+    };
+  }
+  if (secretIsLive !== pubIsLive) {
+    return {
+      ok: false,
+      message: "STRIPE_SECRET_KEY y NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY no coinciden en modo (una es live y la otra test).",
+    };
   }
 
-  return { secretKey: PINNED_STRIPE_TEST_SECRET_KEY, forced: true };
-}
-
-function resolveTestPublishableKey(forced: boolean): string {
-  const envPublishable = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() ?? "";
-
-  if (!forced && envPublishable.startsWith(TEST_PUBLISHABLE_PREFIX)) {
-    return envPublishable;
-  }
-
-  if (envPublishable.startsWith("pk_live_")) {
-    console.warn(
-      "[stripe] NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY es pk_live_; forzando pk_test_ fijada.",
-    );
-  }
-
-  return PINNED_STRIPE_TEST_PUBLISHABLE_KEY;
-}
-
-export function validateStripeTestConfig(): StripeConfigResult {
-  const { secretKey, forced } = resolveTestSecretKey();
-  const publishableKey = resolveTestPublishableKey(forced);
-
-  // Solo aceptamos price IDs explícitos de test para evitar mezclar objetos Live.
+  const mode: "live" | "test" = secretIsLive ? "live" : "test";
   const priceId =
-    process.env.STRIPE_TEST_PRICE_ID?.trim() ||
-    process.env.NEXT_PUBLIC_STRIPE_TEST_PRICE_ID?.trim() ||
-    null;
+    (mode === "live"
+      ? process.env.STRIPE_PRICE_ID?.trim() || process.env.NEXT_PUBLIC_STRIPE_PRICE_ID?.trim()
+      : process.env.STRIPE_TEST_PRICE_ID?.trim() || process.env.NEXT_PUBLIC_STRIPE_TEST_PRICE_ID?.trim()) || null;
 
-  return { ok: true, secretKey, publishableKey, priceId, forcedTestKeys: forced };
+  return { ok: true, secretKey, publishableKey, priceId, mode };
 }
 
 export function getStripe(): Stripe | null {
-  const config = validateStripeTestConfig();
+  const config = resolveStripeConfig();
   if (!config.ok) return null;
 
+  if (!config.secretKey) return null;
+
   if (!stripeClient || stripeClientKey !== config.secretKey) {
-    stripeClient = new Stripe(config.secretKey, {
-      apiVersion: "2026-06-24.dahlia",
-    });
-    stripeClientKey = config.secretKey;
+    try {
+      stripeClient = new Stripe(config.secretKey, {
+        apiVersion: "2026-06-24.dahlia",
+      });
+      stripeClientKey = config.secretKey;
+    } catch {
+      stripeClient = null;
+      stripeClientKey = null;
+      return null;
+    }
   }
 
   return stripeClient;
 }
 
 export function stripeConfigError(): string | null {
-  const config = validateStripeTestConfig();
+  const config = resolveStripeConfig();
   return config.ok ? null : config.message;
 }
 
@@ -100,22 +98,17 @@ export function appOrigin(): string {
 }
 
 export function stripePriceId(): string | null {
-  const config = validateStripeTestConfig();
+  const config = resolveStripeConfig();
   return config.ok ? config.priceId : null;
 }
 
-export function isStripeTestMode(): boolean {
-  return validateStripeTestConfig().ok;
-}
-
 export function stripeRuntimeInfo() {
-  const config = validateStripeTestConfig();
+  const config = resolveStripeConfig();
   if (!config.ok) return { ok: false as const, message: config.message };
 
   return {
     ok: true as const,
-    mode: "test" as const,
-    forcedTestKeys: config.forcedTestKeys,
+    mode: config.mode,
     secretPrefix: config.secretKey.slice(0, 12),
     publishablePrefix: config.publishableKey.slice(0, 12),
   };

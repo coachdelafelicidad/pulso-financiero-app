@@ -11,6 +11,8 @@ import {
   getWeekStartISO,
 } from "@/lib/scoring";
 import { createClient } from "@/lib/supabase/client";
+import { fetchEntitlement } from "@/lib/entitlement";
+import { PaywallGate } from "@/components/billing/PaywallGate";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
 
@@ -60,6 +62,8 @@ export default function CapturaPage() {
   const [error, setError] = useState<string | null>(null);
   const [historialEgresos, setHistorialEgresos] = useState<number[]>([]);
   const [promVentasPrev, setPromVentasPrev] = useState<number | null>(null);
+  const [blocked, setBlocked] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
 
   const periodoSemana = useMemo(() => getWeekStartISO(), []);
 
@@ -69,7 +73,21 @@ export default function CapturaPage() {
         const supabase = createClient();
         const { data } = await supabase.auth.getUser();
         if (!data.user) {
-          router.replace("/login");
+          router.replace("/login?next=/dashboard/captura");
+          return;
+        }
+
+        const entitlement = await fetchEntitlement(supabase, data.user);
+        const { data: thisWeek } = await supabase
+          .from("pulso_scores")
+          .select("id")
+          .eq("user_id", data.user.id)
+          .eq("periodo_semana", periodoSemana)
+          .maybeSingle();
+
+        if (!entitlement.canCapture && !thisWeek) {
+          setBlocked(true);
+          setCheckingAccess(false);
           return;
         }
 
@@ -86,11 +104,12 @@ export default function CapturaPage() {
             scores.reduce((sum, s) => sum + safeNum(s.ventas), 0) / scores.length;
           setPromVentasPrev(avgVentas);
         }
+        setCheckingAccess(false);
       } catch {
-        router.replace("/login");
+        router.replace("/login?next=/dashboard/captura");
       }
     })();
-  }, [router]);
+  }, [router, periodoSemana]);
 
   const handleChange = (key: FieldKey, raw: string) => {
     const cleaned = raw.replace(/[^\d]/g, "");
@@ -187,10 +206,12 @@ export default function CapturaPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        const detail = err?.error ?? err?.code ?? "error desconocido";
-        const hint = err?.hint ? ` | Hint: ${err.hint}` : "";
-        const code = err?.code ? ` [${err.code}]` : "";
-        setError(`Error al guardar${code}: ${detail}${hint}`);
+        if (res.status === 402 || err?.code === "PAYWALL") {
+          setBlocked(true);
+          setProcessing(false);
+          return;
+        }
+        setError(err?.error || t("cap.err_unexpected"));
         setProcessing(false);
         return;
       }
@@ -202,6 +223,18 @@ export default function CapturaPage() {
       setProcessing(false);
     }
   };
+
+  if (checkingAccess) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F7F5F0] font-poppins text-[#06403C]">
+        {t("dash.loading")}
+      </div>
+    );
+  }
+
+  if (blocked) {
+    return <PaywallGate backHref="/dashboard" />;
+  }
 
   return (
     <div className="min-h-screen bg-[#F7F5F0] font-sans text-[#1B2624]">

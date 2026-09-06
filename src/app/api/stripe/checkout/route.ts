@@ -1,35 +1,12 @@
-import Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import {
-  PINNED_STRIPE_TEST_SECRET_KEY,
-  appOrigin,
-  stripePriceId,
-  stripeRuntimeInfo,
-} from "@/lib/stripe";
+import { appOrigin, getStripe, stripePriceId, stripeRuntimeInfo } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function getCheckoutStripe(): Stripe {
-  // Checkout siempre usa sk_test_ fijada para evitar Live Mode en producción.
-  return new Stripe(PINNED_STRIPE_TEST_SECRET_KEY, {
-    apiVersion: "2026-06-24.dahlia",
-  });
-}
-
 export async function POST() {
   try {
-    const runtime = stripeRuntimeInfo();
-    if (!runtime.ok) {
-      return NextResponse.json(
-        { error: runtime.message, stripeMode: "test_required" },
-        { status: 503 },
-      );
-    }
-
-    const stripe = getCheckoutStripe();
-
     const supabase = createClient();
     const {
       data: { user },
@@ -40,13 +17,35 @@ export async function POST() {
       return NextResponse.json({ error: "Debes iniciar sesión." }, { status: 401 });
     }
 
+    const runtime = stripeRuntimeInfo();
+    if (!runtime.ok) {
+      return NextResponse.json({ error: runtime.message }, { status: 503 });
+    }
+
+    const stripe = getStripe();
+    if (!stripe) {
+      return NextResponse.json({ error: "Stripe no disponible." }, { status: 503 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("subscription_status, stripe_customer_id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile?.subscription_status === "active") {
+      return NextResponse.json({ error: "Tu suscripción ya está activa." }, { status: 409 });
+    }
+
     const origin = appOrigin();
     const priceId = stripePriceId();
+    const existingCustomer = profile?.stripe_customer_id ?? undefined;
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
-      customer_email: user.email ?? undefined,
+      customer: existingCustomer,
+      customer_email: existingCustomer ? undefined : user.email ?? undefined,
       client_reference_id: user.id,
       line_items: priceId
         ? [{ price: priceId, quantity: 1 }]
@@ -55,7 +54,7 @@ export async function POST() {
               price_data: {
                 currency: "mxn",
                 product_data: {
-                  name: "Tu Pulso Premium",
+                  name: "Tu Pulso",
                   description: "Tablero ejecutivo, captura semanal y simulador de tesorería",
                 },
                 unit_amount: 49900,
@@ -66,7 +65,7 @@ export async function POST() {
           ],
       metadata: {
         userId: user.id,
-        stripeMode: "test",
+        stripeMode: runtime.mode,
       },
       subscription_data: {
         metadata: {
@@ -74,7 +73,7 @@ export async function POST() {
         },
       },
       success_url: `${origin}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/quiz?checkout=cancelled`,
+      cancel_url: `${origin}/subscribe?checkout=cancelled`,
     });
 
     if (!session.url) {
@@ -84,13 +83,10 @@ export async function POST() {
       );
     }
 
-    const testMode = session.livemode === false;
-
     return NextResponse.json({
       url: session.url,
-      stripeMode: testMode ? "test" : "live",
+      stripeMode: runtime.mode,
       sessionId: session.id,
-      forcedTestKeys: runtime.forcedTestKeys,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error al crear checkout";

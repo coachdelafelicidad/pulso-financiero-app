@@ -15,6 +15,7 @@ import {
   Legend,
 } from "recharts";
 import {
+  calcularEgresoPromedio,
   calcularScoreSemanal,
   getFactorCobranza,
   getSemanasRestantesMes,
@@ -27,6 +28,7 @@ import { BIOMETRIC_PREF_KEY } from "@/lib/auth/session-config";
 import { isPlatformAuthenticatorAvailable } from "@/lib/auth/webauthn-client";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
+import { fetchEntitlement } from "@/lib/entitlement";
 import type { PulsoScore } from "@/types/database";
 
 const TEAL = "#06403C";
@@ -85,18 +87,10 @@ const EMPTY_DATA: PulsoData = {
 
 type Identity = { name: string; company: string };
 
-const BASE_TREND = [
-  { semana: "S25", saldo_bancos_efectivo: 520_000, egresos_semana: 790_000 },
-  { semana: "S26", saldo_bancos_efectivo: 498_000, egresos_semana: 805_000 },
-  { semana: "S27", saldo_bancos_efectivo: 505_000, egresos_semana: 812_000 },
-  { semana: "S28", saldo_bancos_efectivo: 470_000, egresos_semana: 828_000 },
-  { semana: "S29", saldo_bancos_efectivo: 455_000, egresos_semana: 840_000 },
-  { semana: "S30", saldo_bancos_efectivo: 438_000, egresos_semana: 851_000 },
-  { semana: "S31", saldo_bancos_efectivo: 424_000, egresos_semana: 858_000 },
-  { semana: "S32", saldo_bancos_efectivo: 412_000, egresos_semana: 865_000 },
-];
-
-const TREND_LAST = BASE_TREND[BASE_TREND.length - 1];
+function trendWeekLabel(periodoSemana: string): string {
+  const d = new Date(periodoSemana + "T12:00:00");
+  return d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+}
 
 function semaforoScore(score: number) {
   if (score >= 70) return { color: LIME, halo: "rgba(125,194,66,0.22)", labelKey: "score.healthy" };
@@ -113,6 +107,8 @@ type KpiDelta = {
   value: number;
   delta: string;
   deltaColor: string;
+  deltaYoY: string | null;
+  deltaYoYColor: string;
   status: "good" | "warn";
   hint: string;
 };
@@ -124,6 +120,11 @@ function monthKey(date: string | Date): string {
 
 function previousMonthKey(from: Date = new Date()): string {
   const d = new Date(from.getFullYear(), from.getMonth() - 1, 1);
+  return monthKey(d);
+}
+
+function sameMonthPrevYearKey(from: Date = new Date()): string {
+  const d = new Date(from.getFullYear() - 1, from.getMonth(), 1);
   return monthKey(d);
 }
 
@@ -164,7 +165,8 @@ function deltaPrefix(pct: number | null): string {
 
 function buildKpis(
   current: PulsoData,
-  previous: PulsoData | null,
+  previousMonth: PulsoData | null,
+  previousYear: PulsoData | null,
   t: (k: string) => string
 ): KpiDelta[] {
   const defs: { key: KpiKey; labelKey: string; hintKey: string; status: "good" | "warn" }[] = [
@@ -175,12 +177,15 @@ function buildKpis(
   ];
 
   return defs.map(({ key, labelKey, hintKey, status }) => {
-    const pct = previous ? pctChange(safeNumber(current[key]), safeNumber(previous[key])) : null;
+    const pct = previousMonth ? pctChange(safeNumber(current[key]), safeNumber(previousMonth[key])) : null;
+    const pctYoY = previousYear ? pctChange(safeNumber(current[key]), safeNumber(previousYear[key])) : null;
     return {
       label: t(labelKey),
       value: safeNumber(current[key]),
       delta: `${deltaPrefix(pct)}${formatDelta(pct)}`.trim() || "—",
       deltaColor: deltaColor(key, pct),
+      deltaYoY: pctYoY !== null ? `${deltaPrefix(pctYoY)}${formatDelta(pctYoY)}`.trim() : null,
+      deltaYoYColor: deltaColor(key, pctYoY),
       status,
       hint: t(hintKey),
     };
@@ -203,7 +208,11 @@ function DashboardContent() {
   const [showHelp, setShowHelp] = useState(false);
   const [showInstallApp, setShowInstallApp] = useState(false);
   const [showPremiumWelcome, setShowPremiumWelcome] = useState(false);
-  const [isPremium, setIsPremium] = useState(false);
+  const [canCapture, setCanCapture] = useState(true);
+  const [canUsePremiumTools, setCanUsePremiumTools] = useState(false);
+  const [hasStripeCustomer, setHasStripeCustomer] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [portalError, setPortalError] = useState<string | null>(null);
   const [dataRefreshKey, setDataRefreshKey] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
@@ -222,7 +231,8 @@ function DashboardContent() {
         const res = await fetch(`/api/stripe/verify-session?session_id=${encodeURIComponent(sessionId)}`);
         if (res.ok) {
           setShowPremiumWelcome(true);
-          setIsPremium(true);
+          setCanCapture(true);
+          setCanUsePremiumTools(true);
         }
       } catch {
         // Si falla la verificación, igual forzamos recarga de datos reales.
@@ -356,7 +366,25 @@ function DashboardContent() {
 
         if (!active) return;
 
-        setIsPremium(profile?.subscription_status === "active");
+        let entitlement = await fetchEntitlement(supabase, user);
+        if (!entitlement.canUsePremiumTools) {
+          try {
+            const reconcile = await fetch("/api/stripe/reconcile", { method: "POST" });
+            if (reconcile.ok) {
+              const body = (await reconcile.json()) as { matched?: boolean };
+              if (body.matched) {
+                entitlement = await fetchEntitlement(supabase, user);
+                setShowPremiumWelcome(true);
+              }
+            }
+          } catch {
+            // El tablero sigue siendo usable en modo free
+          }
+        }
+
+        setCanCapture(entitlement.canCapture);
+        setCanUsePremiumTools(entitlement.canUsePremiumTools);
+        setHasStripeCustomer(Boolean(entitlement.stripeCustomerId));
 
         const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
         const company =
@@ -368,12 +396,15 @@ function DashboardContent() {
           user.email?.split("@")[0]?.trim() ||
           "Usuario";
 
+        // 520 semanas ≈ 10 años de registro semanal — suficiente para no
+        // truncar el histórico de negocios de varios años (antes 100
+        // cortaba silenciosamente a los ~23 meses de uso).
         const { data: scores } = await supabase
           .from("pulso_scores")
           .select("*")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
-          .limit(100);
+          .limit(520);
 
         if (!active) return;
 
@@ -458,6 +489,22 @@ function DashboardContent() {
   const sc = semaforoScore(score);
   const showBanner = hasData && score < 70;
 
+  async function handleManageBilling() {
+    setPortalLoading(true);
+    setPortalError(null);
+    try {
+      const res = await fetch("/api/stripe/portal", { method: "POST" });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || t("dash.portal_error"));
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      setPortalError(err instanceof Error ? err.message : t("dash.portal_error"));
+      setPortalLoading(false);
+    }
+  }
+
   async function handleLogout() {
     try {
       await createClient().auth.signOut();
@@ -471,38 +518,42 @@ function DashboardContent() {
 
   const kpis = useMemo(() => {
     if (!hasData || scoreHistory.length === 0) {
-      return buildKpis(safeData, null, t);
+      return buildKpis(safeData, null, null, t);
     }
 
+    // Ancla las comparaciones a la fecha del último registro, no a la
+    // fecha del sistema — igual que el simulador (ver latestPeriodo).
     const byMonth = latestSnapshotPerMonth(scoreHistory);
-    const prevKey = previousMonthKey();
-    const previous = byMonth.get(prevKey);
+    const previousMonth = byMonth.get(previousMonthKey(latestPeriodo));
+    const previousYear = byMonth.get(sameMonthPrevYearKey(latestPeriodo));
 
-    if (!previous) {
-      return buildKpis(safeData, null, t);
-    }
-
-    return buildKpis(safeData, normalizeData(previous), t);
+    return buildKpis(
+      safeData,
+      previousMonth ? normalizeData(previousMonth) : null,
+      previousYear ? normalizeData(previousYear) : null,
+      t
+    );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [safeData, hasData, scoreHistory, t]);
+  }, [safeData, hasData, scoreHistory, t, latestPeriodo]);
 
-  const trend = useMemo(() => {
-    const efFactor =
-      TREND_LAST.saldo_bancos_efectivo > 0 && safeData.saldo_bancos_efectivo > 0
-        ? safeData.saldo_bancos_efectivo / TREND_LAST.saldo_bancos_efectivo
-        : 0;
-    const gaFactor =
-      TREND_LAST.egresos_semana > 0 && safeData.egresos_semana > 0
-        ? safeData.egresos_semana / TREND_LAST.egresos_semana
-        : 0;
-    return BASE_TREND.map((w) => ({
-      semana: w.semana,
-      saldo_bancos_efectivo: Math.round(w.saldo_bancos_efectivo * efFactor),
-      egresos_semana: Math.round(w.egresos_semana * gaFactor),
-    }));
-  }, [safeData]);
+  // Tendencia real de las últimas 8 semanas registradas (no datos ficticios).
+  const chartData = useMemo(() => {
+    return [...scoreHistory]
+      .sort((a, b) => new Date(a.periodo_semana).getTime() - new Date(b.periodo_semana).getTime())
+      .slice(-8)
+      .map((s) => ({
+        semana: trendWeekLabel(s.periodo_semana),
+        saldo_bancos_efectivo: safeNumber(s.saldo_bancos_efectivo),
+        egresos_semana: safeNumber(s.egresos_semana),
+      }));
+  }, [scoreHistory]);
 
-  const chartData = trend;
+  // Últimas semanas de egresos (excluye el registro actual) para el promedio
+  // truncado — misma fuente que calcularScoreSemanal usa en captura.
+  const historialEgresos = useMemo(
+    () => scoreHistory.slice(1, 9).map((s) => safeNumber(s.egresos_semana)),
+    [scoreHistory]
+  );
 
   const sim = useMemo(() => {
     // Usa la fecha del registro, no la fecha actual del sistema
@@ -514,31 +565,50 @@ function DashboardContent() {
     const stressFactor = Math.max(0, 1 - cobranzaDelay / 60);
     const effectiveFactor = factorBase * stressFactor;
 
+    // Gasto promedio truncado (mismo cálculo que el score oficial), no solo
+    // el de la semana actual — evita que una semana atípica distorsione
+    // la proyección de las semanas restantes del mes.
+    const egresoPromedio = calcularEgresoPromedio([
+      safeData.egresos_semana,
+      ...historialEgresos,
+    ]);
+
     // Escenario base (sin estrés): caja = saldo + cobranza×factor − egresos
     // Ventas NO entran — son devengado, no cobrado
     const baseProjected =
       safeData.saldo_bancos_efectivo +
       safeData.cobranza_pendiente * factorBase -
       safeData.egresos_semana -
-      (semanasRestantes > 0 ? safeData.egresos_semana * semanasRestantes : 0);
+      (semanasRestantes > 0 ? egresoPromedio * semanasRestantes : 0);
 
     // Escenario estresado: cobranza degradada por retraso
     const projected =
       safeData.saldo_bancos_efectivo +
       safeData.cobranza_pendiente * effectiveFactor -
       safeData.egresos_semana -
-      (semanasRestantes > 0 ? safeData.egresos_semana * semanasRestantes : 0);
+      (semanasRestantes > 0 ? egresoPromedio * semanasRestantes : 0);
 
     const delta = projected - baseProjected;
-    const gastoMensual = safeData.egresos_semana * 4.33;
+    const gastoMensual = egresoPromedio * 4.33;
     const coverage = gastoMensual > 0 ? projected / gastoMensual : 0;
 
     let color = LIME, halo = "rgba(125,194,66,0.22)", labelKey = "sim.healthy";
     if (projected < gastoMensual) { color = RED; halo = "rgba(212,93,93,0.22)"; labelKey = "sim.risk"; }
     else if (projected < gastoMensual * 2) { color = AMBER; halo = "rgba(232,163,61,0.22)"; labelKey = "sim.tight"; }
 
-    return { projected, delta, coverage, color, halo, labelKey };
-  }, [cobranzaDelay, safeData, hasData, latestPeriodo]);
+    // Impacto de la caída de ventas en rentabilidad (el slider no toca la
+    // caja disponible — las ventas son devengado, no cobrado — pero sí
+    // afecta cuánto margen deja el negocio esa semana).
+    const ventasStress = safeData.ventas * (1 - ventasDrop / 100);
+    const margenEstresado =
+      ventasStress > 0
+        ? Math.round(((ventasStress - safeData.egresos_semana) / ventasStress) * 1000) / 10
+        : safeData.egresos_semana > 0
+          ? -100
+          : 0;
+
+    return { projected, delta, coverage, egresoPromedio, color, halo, labelKey, margenEstresado };
+  }, [cobranzaDelay, ventasDrop, safeData, hasData, latestPeriodo, historialEgresos]);
 
   if (isLoading) {
     return (
@@ -590,6 +660,16 @@ function DashboardContent() {
             </svg>
             <span className="hidden sm:inline">{t('dash.face_id')}</span>
           </button>
+          {hasStripeCustomer && (
+            <button
+              type="button"
+              onClick={() => void handleManageBilling()}
+              disabled={portalLoading}
+              className="hidden items-center rounded-full border border-black/[0.12] px-3.5 py-2 text-[13px] font-medium text-black/60 transition hover:border-[#06403C]/40 hover:text-[#06403C] md:inline-flex"
+            >
+              {portalLoading ? t("dash.portal_loading") : t("dash.manage_billing")}
+            </button>
+          )}
           <span className="h-7 w-px bg-black/10" />
           <div className="text-right leading-tight">
             <div className="text-[13.5px] text-black/55">{displayIdentity.company}</div>
@@ -627,6 +707,12 @@ function DashboardContent() {
             </div>
           </div>
         </div>
+
+        {portalError && (
+          <div className="no-print rounded-[16px] border border-red-200 bg-red-50 px-5 py-4 text-[14px] text-red-700">
+            {portalError}
+          </div>
+        )}
 
         {isRefreshing && (
           <div className="no-print rounded-[16px] border border-[#06403C]/15 bg-white px-5 py-4 text-[14px] text-[#06403C]">
@@ -671,6 +757,18 @@ function DashboardContent() {
           />
         )}
 
+        {!canUsePremiumTools && (
+          <div className="no-print flex flex-col gap-3 rounded-[16px] border border-[#E8A33D]/40 bg-[#E8A33D]/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[14px] text-[#06403C]">{t("dash.free_banner")}</p>
+            <Link
+              href="/subscribe"
+              className="inline-flex w-fit items-center justify-center rounded-full bg-[#7DC242] px-4 py-2 font-poppins text-[13px] font-medium text-white"
+            >
+              {t("dash.free_cta")}
+            </Link>
+          </div>
+        )}
+
         {!hasData && (
           <div className="no-print rounded-[16px] border border-[#06403C]/15 bg-white px-5 py-4 text-[14px] text-[#06403C]">
             {t('dash.no_data')} <strong>{t('dash.no_data_cta')}</strong> {t('dash.no_data_suffix')}
@@ -687,10 +785,10 @@ function DashboardContent() {
             </h1>
           </div>
           <Link
-            href="/dashboard/captura"
+            href={canCapture ? "/dashboard/captura" : "/subscribe"}
             className="no-print mb-4 inline-flex w-fit items-center justify-center gap-2 rounded-full bg-[#7DC242] px-5 py-3 font-poppins text-[14px] font-medium text-white shadow-[0_14px_30px_-16px_rgba(125,194,66,0.9)] transition hover:brightness-95 active:scale-[0.98] sm:mb-0"
           >
-            {t('dash.register_cta')}
+            {canCapture ? t("dash.register_cta") : t("dash.free_cta")}
           </Link>
         </section>
 
@@ -748,6 +846,11 @@ function DashboardContent() {
                 <span className="font-poppins text-[26px] font-semibold -tracking-[0.02em] text-[#06403C]">{mxn(k.value)}</span>
                 <span className="text-[12px] font-medium" style={{ color: k.deltaColor }}>{k.delta}</span>
               </div>
+              {k.deltaYoY && (
+                <div className="mt-0.5 text-[11px] font-medium" style={{ color: k.deltaYoYColor }}>
+                  {k.deltaYoY} {t('kpi.vs_last_year')}
+                </div>
+              )}
               <div className="mt-1 text-[12.5px] text-black/45">{k.hint}</div>
             </div>
           ))}
@@ -791,7 +894,20 @@ function DashboardContent() {
           </div>
         </section>
 
-        <section id="simulador-estres" className="report-section stress-report rounded-[20px] border border-black/[0.12] bg-[#F7F5F0] p-8">
+        <section id="simulador-estres" className="report-section stress-report relative rounded-[20px] border border-black/[0.12] bg-[#F7F5F0] p-8">
+          {!canUsePremiumTools && (
+            <div className="no-print absolute inset-0 z-10 flex flex-col items-center justify-center rounded-[20px] bg-[#F7F5F0]/92 px-6 text-center">
+              <p className="max-w-sm font-poppins text-[16px] font-semibold text-[#06403C]">
+                {t("dash.sim_locked")}
+              </p>
+              <Link
+                href="/subscribe"
+                className="mt-4 inline-flex rounded-full bg-[#7DC242] px-5 py-2.5 font-poppins text-[13px] font-medium text-white"
+              >
+                {t("dash.free_cta")}
+              </Link>
+            </div>
+          )}
           <div className="no-print mb-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#7DC242]">{t('sim.badge')}</div>
           <h2 className="mb-1 font-poppins text-[20px] font-semibold -tracking-[0.01em] text-[#06403C]">
             {t('sim.title')}
@@ -852,11 +968,28 @@ function DashboardContent() {
               </div>
               <div className="my-5 h-px bg-black/[0.08]" />
               <div className="flex items-baseline justify-between">
+                <span className="text-[13.5px] text-black/55">{t("sim.avg_weekly_spend")}</span>
+                <span className="font-poppins text-[18px] font-semibold text-[#06403C]">
+                  {mxn(sim.egresoPromedio)}
+                </span>
+              </div>
+              <div className="mt-3 flex items-baseline justify-between">
                 <span className="text-[13.5px] text-black/55">{t('sim.coverage')}</span>
                 <span className="font-poppins text-[18px] font-semibold" style={{ color: sim.color }}>
                   {sim.coverage.toFixed(1)} {t('sim.months')}
                 </span>
               </div>
+              {ventasDrop > 0 && (
+                <div className="mt-3 flex items-baseline justify-between">
+                  <span className="text-[13.5px] text-black/55">{t('sim.margin_label')}</span>
+                  <span
+                    className="font-poppins text-[18px] font-semibold"
+                    style={{ color: sim.margenEstresado < 0 ? RED : "#06403C" }}
+                  >
+                    {sim.margenEstresado}%
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </section>

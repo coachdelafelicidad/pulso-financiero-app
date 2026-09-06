@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
-const STRIPE_CHECKOUT = 'https://buy.stripe.com/4gM4graxv5914i47kJ8ww00'
-const NASIO_COMMUNITY = 'https://nas.com/pulsofinanciero'
+const SUBSCRIBE = '/subscribe'
+const COMMUNITY_URL = process.env.NEXT_PUBLIC_COMMUNITY_URL?.trim() || 'https://okomosfinanzas.com/'
 const OKOMOS_SITE = 'https://okomosfinanzas.com/'
 
 const FEATURES = [
@@ -23,14 +23,16 @@ const FEATURES = [
   },
 ] as const
 
-function ExternalCta({
+function Cta({
   href,
   children,
   variant = 'primary',
+  external = false,
 }: {
   href: string
   children: React.ReactNode
   variant?: 'primary' | 'secondary'
+  external?: boolean
 }) {
   const base =
     'inline-flex items-center justify-center rounded-lg px-6 py-3.5 font-display text-base font-semibold transition-colors duration-200'
@@ -39,10 +41,18 @@ function ExternalCta({
       ? `${base} bg-green text-white hover:bg-green/90`
       : `${base} border-2 border-teal-deep bg-transparent text-teal-deep hover:bg-teal-deep hover:text-cream`
 
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={styles}>
+        {children}
+      </a>
+    )
+  }
+
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className={styles}>
+    <Link href={href} className={styles}>
       {children}
-    </a>
+    </Link>
   )
 }
 
@@ -80,7 +90,7 @@ export default function LandingPage() {
               urgente.
             </p>
             <div className="mt-10 flex flex-col items-center gap-3">
-              <ExternalCta href={STRIPE_CHECKOUT}>Activar mi acceso — $499/mes</ExternalCta>
+              <Cta href={SUBSCRIBE}>Activar mi acceso — $499/mes</Cta>
               <p className="max-w-md text-sm text-mint/80">
                 Cancela cuando quieras. Sin contratos. Sin conectar banco.
               </p>
@@ -126,9 +136,9 @@ export default function LandingPage() {
                   </h2>
                   <p className="mt-4 text-base leading-relaxed text-[#1B2624]/90">
                     El App te dice qué está pasando con tu negocio, semana a semana. La Comunidad
-                    PRO en Nas.com te ayuda a entender qué hacer con esa información: sesiones en
-                    vivo por Zoom dos veces al mes con Mario, un catálogo de sesiones grabadas, y
-                    un espacio para resolver dudas directamente con él.
+                    PRO te ayuda a entender qué hacer con esa información: sesiones en vivo por
+                    Zoom dos veces al mes con Mario, un catálogo de sesiones grabadas, y un espacio
+                    para resolver dudas directamente con él.
                   </p>
                   <p className="mt-4 text-base leading-relaxed text-[#1B2624]/90">
                     Son dos productos independientes — puedes usar el App por su cuenta, o
@@ -151,9 +161,9 @@ export default function LandingPage() {
                       Espacio para dudas entre sesiones
                     </li>
                   </ul>
-                  <ExternalCta href={NASIO_COMMUNITY} variant="secondary">
+                  <Cta href={COMMUNITY_URL} variant="secondary" external>
                     Conocer la Comunidad PRO
-                  </ExternalCta>
+                  </Cta>
                 </div>
               </div>
             </div>
@@ -170,7 +180,7 @@ export default function LandingPage() {
               Activa tu acceso, entra a tu tablero y registra tu primera semana cuando estés listo.
             </p>
             <div className="mt-8 flex flex-col items-center gap-4">
-              <ExternalCta href={STRIPE_CHECKOUT}>Activar mi acceso — $499/mes</ExternalCta>
+              <Cta href={SUBSCRIBE}>Activar mi acceso — $499/mes</Cta>
               <Link
                 href="/login"
                 className="font-display text-base font-semibold text-teal-deep underline-offset-4 transition-colors hover:text-teal-light hover:underline"
@@ -198,7 +208,14 @@ export default function LandingPage() {
             </a>
           </p>
           <p className="mt-6 text-xs text-mint/60">
-            © {new Date().getFullYear()} Okomos Finanzas · Tu Pulso
+            © {new Date().getFullYear()} Okomos Finanzas · Tu Pulso ·{" "}
+            <Link href="/privacidad" className="underline underline-offset-2 hover:text-mint">
+              Privacidad
+            </Link>
+            {" · "}
+            <Link href="/terminos" className="underline underline-offset-2 hover:text-mint">
+              Términos
+            </Link>
           </p>
         </div>
       </footer>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe, stripeConfigError } from "@/lib/stripe";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { activateProfileSubscription, findUserIdByEmail } from "@/lib/subscription";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,12 +26,12 @@ function subscriptionId(
 export async function POST(request: NextRequest) {
   const configError = stripeConfigError();
   if (configError) {
-    return NextResponse.json({ error: configError, stripeMode: "test_required" }, { status: 503 });
+    return NextResponse.json({ error: configError }, { status: 503 });
   }
 
   const stripe = getStripe();
   if (!stripe) {
-    return NextResponse.json({ error: "Stripe Test Mode no disponible." }, { status: 503 });
+    return NextResponse.json({ error: "Stripe no disponible." }, { status: 503 });
   }
 
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
@@ -57,24 +58,51 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Supabase admin no configurado." }, { status: 503 });
   }
 
+  try {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.userId || session.client_reference_id;
+      const email = session.customer_details?.email || session.customer_email;
+      const userId =
+        session.metadata?.userId ||
+        session.client_reference_id ||
+        (email ? await findUserIdByEmail(admin, email) : null);
       if (!userId) break;
 
-      const custId = customerId(session.customer);
-      const subId = subscriptionId(session.subscription);
+      await activateProfileSubscription(
+        admin,
+        userId,
+        customerId(session.customer),
+        subscriptionId(session.subscription)
+      );
+      break;
+    }
 
-      await admin
-        .from("profiles")
-        .update({
-          subscription_status: "active",
-          stripe_customer_id: custId,
-          stripe_subscription_id: subId,
-          subscribed_at: new Date().toISOString(),
-        })
-        .eq("id", userId);
+    case "customer.subscription.updated": {
+      // Cubre pagos fallidos (past_due/unpaid) y reactivaciones — sin esto,
+      // un cobro rechazado dejaba el acceso premium activo indefinidamente
+      // hasta que Stripe cancelara la suscripción por completo.
+      const subscription = event.data.object as Stripe.Subscription;
+      const userId = subscription.metadata?.userId;
+      const cust = customerId(subscription.customer);
+
+      let targetUserId = userId;
+      if (!targetUserId && cust) {
+        const { data } = await admin
+          .from("profiles")
+          .select("id")
+          .eq("stripe_customer_id", cust)
+          .maybeSingle();
+        targetUserId = data?.id;
+      }
+
+      if (targetUserId) {
+        const isActive = subscription.status === "active" || subscription.status === "trialing";
+        await admin
+          .from("profiles")
+          .update({ subscription_status: isActive ? "active" : "canceled" })
+          .eq("id", targetUserId);
+      }
       break;
     }
 
@@ -107,6 +135,10 @@ export async function POST(request: NextRequest) {
 
     default:
       break;
+  }
+  } catch (error) {
+    console.error("[stripe/webhook]", error);
+    return NextResponse.json({ error: "No se pudo aplicar el evento." }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });

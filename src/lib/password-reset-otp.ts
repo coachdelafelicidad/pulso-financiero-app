@@ -11,8 +11,10 @@ export function normalizeEmail(email: string): string {
 export function hashOtp(email: string, otp: string): string {
   const pepper =
     process.env.PASSWORD_RESET_PEPPER?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    "pulso-emergency-reset";
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!pepper) {
+    throw new Error("Falta PASSWORD_RESET_PEPPER o SUPABASE_SERVICE_ROLE_KEY.");
+  }
   return createHash("sha256")
     .update(`${normalizeEmail(email)}:${otp.trim()}:${pepper}`)
     .digest("hex");

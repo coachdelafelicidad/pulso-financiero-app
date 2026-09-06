@@ -159,9 +159,17 @@ export function calcularScoreSemanal(
     Math.max(0, Math.round((margen_real / 30) * 100)),
   )
 
-  // Score Planeación: cobranza pendiente como ratio de ventas (penalización)
-  // 0% cobranza pendiente = 100, 50%+ = 0
-  const cobRatio = ventas > 0 ? cobranza_pendiente / ventas : 0
+  // Score Planeación: cobranza pendiente (saldo acumulado) como ratio de
+  // ventas MENSUALIZADAS (semana × 4.33) — no de una sola semana.
+  // La cobranza pendiente es un saldo (stock); comparada contra el flujo de
+  // una sola semana, cualquier negocio con clientes de crédito normal
+  // (p. ej. cartera equivalente a 2-3 semanas de venta) marcaría 0 siempre.
+  // 0% de ventas mensuales pendientes = 100, 50%+ = 0.
+  // Sin ventas esta semana pero con cobranza pendiente = riesgo máximo,
+  // no riesgo cero (no hay ingreso nuevo que respalde lo pendiente).
+  const ventasMensualizadas = ventas * 4.33
+  const cobRatio =
+    ventasMensualizadas > 0 ? cobranza_pendiente / ventasMensualizadas : (cobranza_pendiente > 0 ? 1 : 0)
   const score_planeacion = Math.min(
     100,
     Math.max(0, Math.round((1 - cobRatio / 0.5) * 100)),
