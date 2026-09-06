@@ -32,12 +32,13 @@ export async function fetchEntitlement(
 ): Promise<Entitlement> {
   const email = user.email?.trim() ?? "";
 
-  const [profileRes, vipRes, countRes] = await Promise.all([
+  const [profileRes, vipRpc, vipRow, countRes] = await Promise.all([
     supabase
       .from("profiles")
       .select("subscription_status, stripe_customer_id")
       .eq("id", user.id)
       .maybeSingle(),
+    supabase.rpc("is_current_user_vip"),
     email
       ? supabase.from("vip_emails").select("email").ilike("email", email).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -49,7 +50,7 @@ export async function fetchEntitlement(
 
   return buildEntitlement({
     isPremium: profileRes.data?.subscription_status === "active",
-    isVip: Boolean(vipRes.data?.email),
+    isVip: vipRpc.data === true || Boolean(vipRow.data?.email),
     scoreCount: countRes.count ?? 0,
     stripeCustomerId: profileRes.data?.stripe_customer_id ?? null,
   });

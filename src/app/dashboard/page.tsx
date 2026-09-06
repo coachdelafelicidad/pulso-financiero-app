@@ -346,8 +346,6 @@ function DashboardContent() {
       } catch {
         if (active) router.replace("/login");
         return;
-      } finally {
-        if (active) setIsLoading(false);
       }
 
       if (!active) return;
@@ -432,6 +430,8 @@ function DashboardContent() {
           setDbScore(null);
           setHasData(false);
         }
+      } finally {
+        if (active) setIsLoading(false);
       }
     })();
 
