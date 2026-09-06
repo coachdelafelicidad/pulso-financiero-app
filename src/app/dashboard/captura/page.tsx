@@ -9,6 +9,7 @@ import {
   getFactorCobranza,
   getSemanaMes,
   getWeekStartISO,
+  hoyOperacion,
 } from "@/lib/scoring";
 import { createClient } from "@/lib/supabase/client";
 import { fetchEntitlement } from "@/lib/entitlement";
@@ -138,8 +139,8 @@ export default function CapturaPage() {
     parsed.saldo_bancos_efectivo > 0 ||
     parsed.cobranza_pendiente > 0;
 
-  const factorCobranza = getFactorCobranza(new Date());
-  const semanaMes = getSemanaMes(new Date());
+  const factorCobranza = getFactorCobranza(hoyOperacion());
+  const semanaMes = getSemanaMes(hoyOperacion());
   const cobranzaPonderada = Math.round(parsed.cobranza_pendiente * factorCobranza);
   const showCobranzaMsg = parsed.cobranza_pendiente > 0;
 

@@ -15,10 +15,10 @@ import {
   Legend,
 } from "recharts";
 import {
+  calcularCajaFinDeMes,
   calcularEgresoPromedio,
   calcularScoreSemanal,
-  getFactorCobranza,
-  getSemanasRestantesMes,
+  hoyOperacion,
 } from "@/lib/scoring";
 import { createClient, clearSessionCookies } from "@/lib/supabase/client";
 import { BiometricPrompt } from "@/components/auth/BiometricPrompt";
@@ -559,14 +559,12 @@ function DashboardContent() {
   );
 
   const sim = useMemo(() => {
-    // Usa la fecha del registro, no la fecha actual del sistema
-    const now = hasData ? latestPeriodo : new Date();
-    const factorBase = getFactorCobranza(now);
-    const semanasRestantes = getSemanasRestantesMes(now);
+    // Fin de mes usa el día de hoy en México, no el lunes ISO del periodo.
+    // Si el periodo es 31 ago y hoy es 6 sep, el factor sigue siendo 100%.
+    const now = hoyOperacion();
 
     // Cobranza estresada: delay adicional reduce el factor de recuperación
     const stressFactor = Math.max(0, 1 - cobranzaDelay / 60);
-    const effectiveFactor = factorBase * stressFactor;
 
     // Gasto promedio truncado (mismo cálculo que el score oficial), no solo
     // el de la semana actual — evita que una semana atípica distorsione
@@ -578,18 +576,22 @@ function DashboardContent() {
 
     // Escenario base (sin estrés): caja = saldo + cobranza×factor − egresos
     // Ventas NO entran — son devengado, no cobrado
-    const baseProjected =
-      safeData.saldo_bancos_efectivo +
-      safeData.cobranza_pendiente * factorBase -
-      safeData.egresos_semana -
-      (semanasRestantes > 0 ? egresoPromedio * semanasRestantes : 0);
+    const baseProjected = calcularCajaFinDeMes({
+      saldo_bancos_efectivo: safeData.saldo_bancos_efectivo,
+      cobranza_pendiente: safeData.cobranza_pendiente,
+      egresos_semana: safeData.egresos_semana,
+      egresoPromedio,
+      date: now,
+    });
 
     // Escenario estresado: cobranza degradada por retraso
-    const projected =
-      safeData.saldo_bancos_efectivo +
-      safeData.cobranza_pendiente * effectiveFactor -
-      safeData.egresos_semana -
-      (semanasRestantes > 0 ? egresoPromedio * semanasRestantes : 0);
+    const projected = calcularCajaFinDeMes({
+      saldo_bancos_efectivo: safeData.saldo_bancos_efectivo,
+      cobranza_pendiente: safeData.cobranza_pendiente * stressFactor,
+      egresos_semana: safeData.egresos_semana,
+      egresoPromedio,
+      date: now,
+    });
 
     const delta = projected - baseProjected;
     const gastoMensual = egresoPromedio * 4.33;
@@ -611,7 +613,7 @@ function DashboardContent() {
           : 0;
 
     return { projected, delta, coverage, egresoPromedio, color, halo, labelKey, margenEstresado };
-  }, [cobranzaDelay, ventasDrop, safeData, hasData, latestPeriodo, historialEgresos]);
+  }, [cobranzaDelay, ventasDrop, safeData, historialEgresos]);
 
   if (isLoading) {
     return (

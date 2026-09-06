@@ -116,11 +116,7 @@ export async function POST(req: NextRequest) {
       .limit(8);
 
     const historialEgresos = (historial ?? []).map((h) => Number(h.egresos_semana) || 0);
-    const score = calcularScoreSemanal(
-      inputs,
-      historialEgresos,
-      new Date(body.periodo_semana + "T12:00:00"),
-    );
+    const score = calcularScoreSemanal(inputs, historialEgresos);
 
     const payload = {
       user_id: user.id,

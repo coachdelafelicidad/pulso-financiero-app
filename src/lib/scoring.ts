@@ -58,6 +58,47 @@ export function getSemanasRestantesMes(date: Date): number {
   return Math.floor(diasRestantes / 7)
 }
 
+/**
+ * Día de operación en México. La caja a fin de mes se proyecta con
+ * el calendario de hoy, no con el lunes ISO de la semana: si hoy es
+ * 6 sep y el periodo es 31 ago, sigue siendo semana 1 (factor 100%).
+ */
+export function hoyOperacion(now: Date = new Date()): Date {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now)
+  const y = parts.find((p) => p.type === "year")?.value
+  const m = parts.find((p) => p.type === "month")?.value
+  const d = parts.find((p) => p.type === "day")?.value
+  return new Date(`${y}-${m}-${d}T12:00:00`)
+}
+
+/**
+ * Caja a fin de mes:
+ * efectivo + cobranza×factor(semana actual) − egreso de esta semana
+ * − gasto semanal promedio × semanas que faltan.
+ */
+export function calcularCajaFinDeMes(input: {
+  saldo_bancos_efectivo: number
+  cobranza_pendiente: number
+  egresos_semana: number
+  egresoPromedio: number
+  date?: Date
+}): number {
+  const date = input.date ?? hoyOperacion()
+  const factor = getFactorCobranza(date)
+  const restantes = getSemanasRestantesMes(date)
+  return (
+    input.saldo_bancos_efectivo +
+    input.cobranza_pendiente * factor -
+    input.egresos_semana -
+    (restantes > 0 ? input.egresoPromedio * restantes : 0)
+  )
+}
+
 /** ISO date YYYY-MM-DD del lunes de la semana actual. */
 export function getWeekStartISO(date: Date = new Date()): string {
   const d = new Date(date)
@@ -125,25 +166,23 @@ export function calcularRunway(
 export function calcularScoreSemanal(
   inputs: WeeklyInputs,
   historialEgresos: number[] = [],
-  date: Date = new Date(),
+  _date: Date = new Date(),
 ): WeeklyScoreResult {
   const { saldo_bancos_efectivo, egresos_semana, cobranza_pendiente, ventas } = inputs
-
-  const factorCobranza = getFactorCobranza(date)
-  const semanasRestantes = getSemanasRestantesMes(date)
 
   // Runway con historial (incluye la semana actual como primera entrada)
   const egresosConActual = [egresos_semana, ...historialEgresos]
 
-  // Proyección de caja:
-  // - Resta egresos_semana siempre (ya comprometidos esta semana)
-  // - Resta promedio truncado × semanas futuras del mes
+  // Proyección de caja a fin de mes con el calendario de operación
+  // (hoy en México), no el lunes ISO — evita el 31 ago = “mes cerrado”.
   const egresoPromedio = calcularEgresoPromedio(egresosConActual)
-  const caja_proyectada =
-    saldo_bancos_efectivo +
-    cobranza_pendiente * factorCobranza -
-    egresos_semana -
-    (semanasRestantes > 0 ? egresoPromedio * semanasRestantes : 0)
+  const caja_proyectada = calcularCajaFinDeMes({
+    saldo_bancos_efectivo,
+    cobranza_pendiente,
+    egresos_semana,
+    egresoPromedio,
+    date: hoyOperacion(),
+  })
   const { runway_meses, nota: runwayNota } = calcularRunway(egresosConActual, saldo_bancos_efectivo)
 
   // Margen real de la semana
