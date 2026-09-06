@@ -28,7 +28,7 @@ import { BIOMETRIC_PREF_KEY } from "@/lib/auth/session-config";
 import { isPlatformAuthenticatorAvailable } from "@/lib/auth/webauthn-client";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
-import { fetchEntitlement } from "@/lib/entitlement";
+import { fetchEntitlement, isVipAllowlisted } from "@/lib/entitlement";
 import type { PulsoScore } from "@/types/database";
 
 const TEAL = "#06403C";
@@ -365,6 +365,9 @@ function DashboardContent() {
         if (!active) return;
 
         let entitlement = await fetchEntitlement(supabase, user);
+        if (isVipAllowlisted(user.email) && !entitlement.canUsePremiumTools) {
+          entitlement = { ...entitlement, isVip: true, canCapture: true, canUsePremiumTools: true };
+        }
         if (!entitlement.canUsePremiumTools) {
           try {
             const reconcile = await fetch("/api/stripe/reconcile", { method: "POST" });
@@ -429,6 +432,10 @@ function DashboardContent() {
           setData(EMPTY_DATA);
           setDbScore(null);
           setHasData(false);
+          if (isVipAllowlisted(userEmail)) {
+            setCanCapture(true);
+            setCanUsePremiumTools(true);
+          }
         }
       } finally {
         if (active) setIsLoading(false);

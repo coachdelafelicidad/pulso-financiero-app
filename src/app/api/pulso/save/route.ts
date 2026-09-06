@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { calcularScoreSemanal } from "@/lib/scoring";
+import { isVipAllowlisted } from "@/lib/entitlement";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,7 +81,10 @@ export async function POST(req: NextRequest) {
       ? await admin.from("vip_emails").select("email").ilike("email", email).maybeSingle()
       : { data: null };
 
-    const unlocked = profile?.subscription_status === "active" || Boolean(vip?.email);
+    const unlocked =
+      profile?.subscription_status === "active" ||
+      Boolean(vip?.email) ||
+      isVipAllowlisted(email);
 
     const { count: scoreCount } = await admin
       .from("pulso_scores")
