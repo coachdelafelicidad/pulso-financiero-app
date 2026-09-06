@@ -432,10 +432,6 @@ function DashboardContent() {
           setData(EMPTY_DATA);
           setDbScore(null);
           setHasData(false);
-          if (isVipAllowlisted(userEmail)) {
-            setCanCapture(true);
-            setCanUsePremiumTools(true);
-          }
         }
       } finally {
         if (active) setIsLoading(false);

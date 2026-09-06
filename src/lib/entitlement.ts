@@ -54,32 +54,25 @@ export async function fetchEntitlement(
 
   try {
     const [profileRes, vipRpc, vipRow, countRes] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("subscription_status, stripe_customer_id")
-        .eq("id", user.id)
-        .maybeSingle()
-        .then((res) => res)
-        .catch(() => ({ data: null })),
-      supabase
-        .rpc("is_current_user_vip")
-        .then((res) => res)
-        .catch(() => ({ data: null })),
+      Promise.resolve(
+        supabase
+          .from("profiles")
+          .select("subscription_status, stripe_customer_id")
+          .eq("id", user.id)
+          .maybeSingle()
+      ).catch(() => ({ data: null })),
+      Promise.resolve(supabase.rpc("is_current_user_vip")).catch(() => ({ data: null })),
       email
-        ? supabase
-            .from("vip_emails")
-            .select("email")
-            .ilike("email", email)
-            .maybeSingle()
-            .then((res) => res)
-            .catch(() => ({ data: null }))
+        ? Promise.resolve(
+            supabase.from("vip_emails").select("email").ilike("email", email).maybeSingle()
+          ).catch(() => ({ data: null }))
         : Promise.resolve({ data: null }),
-      supabase
-        .from("pulso_scores")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .then((res) => res)
-        .catch(() => ({ count: 0 })),
+      Promise.resolve(
+        supabase
+          .from("pulso_scores")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+      ).catch(() => ({ count: 0 })),
     ]);
 
     return buildEntitlement({
