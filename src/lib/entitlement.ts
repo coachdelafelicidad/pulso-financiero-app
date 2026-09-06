@@ -16,8 +16,7 @@ export const TEAM_VIP_EMAILS = new Set([
   "anaosorno@hotmail.com",
   "anaosornopulido@gmail.com",
   "lacoachdelafelicidad@gmail.com",
-  "diego.mojica@gmail.com",
-  "diego_mojica@hotmail.com",
+  "demo.panaderia@okomosfinanzas.com",
 ]);
 
 export function normalizeEmail(email?: string | null): string {
