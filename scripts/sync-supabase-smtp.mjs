@@ -46,7 +46,7 @@ const PROJECT_REF =
 const SMTP_ADMIN_EMAIL =
   process.env.SMTP_ADMIN_EMAIL ?? "hola@okomosfinanzas.com";
 const SMTP_SENDER_NAME =
-  process.env.SMTP_SENDER_NAME ?? "Pulso by Okomos";
+  process.env.SMTP_SENDER_NAME ?? "Tu Pulso por Okomos";
 
 if (!RESEND_API_KEY) {
   console.error(

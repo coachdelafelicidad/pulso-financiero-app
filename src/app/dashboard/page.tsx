@@ -709,7 +709,7 @@ function DashboardContent() {
               <div className="font-poppins text-[22px] font-semibold tracking-tight text-[#06403C]">
                 Okomos Finanzas
               </div>
-              <div className="mt-1 text-[14px] text-black/55">Reporte Ejecutivo — Pulso by Okomos</div>
+              <div className="mt-1 text-[14px] text-black/55">Reporte Ejecutivo — Tu Pulso por Okomos</div>
             </div>
             <div className="text-right text-[13px] leading-relaxed text-black/55">
               <div className="font-poppins font-medium text-[#06403C]">{displayIdentity.company}</div>

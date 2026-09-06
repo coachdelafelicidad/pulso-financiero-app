@@ -5,12 +5,12 @@ export default function PrivacidadPage() {
     <main className="min-h-screen bg-cream px-5 py-16 text-[#1B2624] sm:px-8">
       <div className="mx-auto max-w-2xl">
         <Link href="/" className="text-sm font-semibold text-teal-deep hover:text-teal-light">
-          ← Pulso by Okomos
+          ← Tu Pulso por Okomos
         </Link>
         <h1 className="mt-6 font-display text-3xl font-bold text-teal-deep">Aviso de privacidad</h1>
         <div className="mt-6 space-y-4 text-sm leading-relaxed text-[#1B2624]/85">
           <p>
-            Okomos Finanzas (“nosotros”) opera Pulso by Okomos en app.okomosfinanzas.com. Recabamos el
+            Okomos Finanzas (“nosotros”) opera Tu Pulso por Okomos en app.okomosfinanzas.com. Recabamos el
             correo, el nombre de tu empresa y los cuatro números que tú capturas cada semana
             (ventas, egresos, efectivo y cobranza) para calcular tu score y mostrarte el tablero.
           </p>

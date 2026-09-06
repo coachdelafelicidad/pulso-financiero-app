@@ -51,7 +51,7 @@ export function PaywallGate({ backHref = "/dashboard" }: { backHref?: string }) 
 
           <p className="mb-8 text-[15px] leading-relaxed text-teal">
             Para registrar tus 4 números semana a semana, ver tu historial con gráficas y usar el
-            Simulador de Estrés Financiero, activa Pulso by Okomos por $499 MXN al mes.
+            Simulador de Estrés Financiero, activa Tu Pulso por Okomos por $499 MXN al mes.
           </p>
 
           {error && (
@@ -82,7 +82,7 @@ export function PaywallGate({ backHref = "/dashboard" }: { backHref?: string }) 
           </Link>
         </div>
 
-        <p className="mt-6 text-center text-xs text-mint/70">Okomos Finanzas · Pulso by Okomos</p>
+        <p className="mt-6 text-center text-xs text-mint/70">Okomos Finanzas · Tu Pulso por Okomos</p>
       </div>
     </main>
   );

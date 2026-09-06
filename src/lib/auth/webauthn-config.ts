@@ -1,4 +1,4 @@
-/** Configuración WebAuthn / Passkeys para Pulso by Okomos */
+/** Configuración WebAuthn / Passkeys para Tu Pulso por Okomos */
 
 export function getWebAuthnRpId(): string {
   const configured = process.env.WEBAUTHN_RP_ID?.trim();
@@ -18,7 +18,7 @@ export function getWebAuthnOrigin(): string {
   return "https://app.okomosfinanzas.com";
 }
 
-export const WEBAUTHN_RP_NAME = "Pulso by Okomos";
+export const WEBAUTHN_RP_NAME = "Tu Pulso por Okomos";
 
 export const CHALLENGE_COOKIE = "pulso-webauthn-challenge";
 export const CHALLENGE_TTL_SECONDS = 5 * 60;

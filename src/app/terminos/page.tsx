@@ -5,12 +5,12 @@ export default function TerminosPage() {
     <main className="min-h-screen bg-cream px-5 py-16 text-[#1B2624] sm:px-8">
       <div className="mx-auto max-w-2xl">
         <Link href="/" className="text-sm font-semibold text-teal-deep hover:text-teal-light">
-          ← Pulso by Okomos
+          ← Tu Pulso por Okomos
         </Link>
         <h1 className="mt-6 font-display text-3xl font-bold text-teal-deep">Términos de uso</h1>
         <div className="mt-6 space-y-4 text-sm leading-relaxed text-[#1B2624]/85">
           <p>
-            Pulso by Okomos es una herramienta de seguimiento semanal. No es asesoría fiscal, contable ni
+            Tu Pulso por Okomos es una herramienta de seguimiento semanal. No es asesoría fiscal, contable ni
             una recomendación de inversión. Las cifras las capturas tú; el score es una lectura
             orientativa de esos números.
           </p>

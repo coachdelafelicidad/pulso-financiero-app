@@ -20,7 +20,7 @@ const SITE_URL = 'https://app.okomosfinanzas.com'
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'Pulso by Okomos',
+  title: 'Tu Pulso por Okomos',
   description:
     'Mide la salud financiera de tu empresa semana a semana. Sin conectar banco. Sin jerga contable.',
   icons: {
@@ -32,20 +32,20 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Pulso by Okomos',
+    title: 'Tu Pulso por Okomos',
   },
   openGraph: {
-    title: 'Pulso by Okomos',
+    title: 'Tu Pulso por Okomos',
     description:
       'Mide la salud financiera de tu empresa semana a semana. Sin conectar banco. Sin jerga contable.',
     url: SITE_URL,
-    siteName: 'Pulso by Okomos',
+    siteName: 'Tu Pulso por Okomos',
     images: [
       {
         url: '/logo.png',
         width: 1200,
         height: 630,
-        alt: 'Pulso by Okomos',
+        alt: 'Tu Pulso por Okomos',
       },
     ],
     locale: 'es_MX',
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Pulso by Okomos',
+    title: 'Tu Pulso por Okomos',
     description:
       'Mide la salud financiera de tu empresa semana a semana. Sin conectar banco. Sin jerga contable.',
     images: ['/logo.png'],
