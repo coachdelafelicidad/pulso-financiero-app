@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: 'Tu Pulso por Okomos',
   description:
-    'Mide la salud financiera de tu empresa semana a semana. Sin conectar banco. Sin jerga contable.',
+    '¿Vamos bien, o nada más parece que vamos bien? Cuatro números cada semana y un semáforo. Sin conectar banco. $499/mes.',
   icons: {
     icon: '/icon-pwa-192.png',
     shortcut: '/icon-pwa-192.png',
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Tu Pulso por Okomos',
     description:
-      'Mide la salud financiera de tu empresa semana a semana. Sin conectar banco. Sin jerga contable.',
+      '¿Vamos bien, o nada más parece que vamos bien? Cuatro números cada semana y un semáforo. Sin conectar banco.',
     url: SITE_URL,
     siteName: 'Tu Pulso por Okomos',
     images: [
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Tu Pulso por Okomos',
     description:
-      'Mide la salud financiera de tu empresa semana a semana. Sin conectar banco. Sin jerga contable.',
+      '¿Vamos bien, o nada más parece que vamos bien? Cuatro números cada semana y un semáforo. Sin conectar banco.',
     images: ['/logo.png'],
   },
 }
