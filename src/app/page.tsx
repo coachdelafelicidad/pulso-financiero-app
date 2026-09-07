@@ -1,7 +1,9 @@
 import Link from 'next/link'
 
 const SUBSCRIBE = '/subscribe'
-const COMMUNITY_URL = process.env.NEXT_PUBLIC_COMMUNITY_URL?.trim() || 'https://nas.com/tupulso'
+const COMMUNITY_URL =
+  process.env.NEXT_PUBLIC_COMMUNITY_URL?.trim() ||
+  'https://nas.com/tupulso/join-membership/6a2c795656d1b91a1c12d25e'
 const OKOMOS_SITE = 'https://okomosfinanzas.com/'
 
 const FEATURES = [
