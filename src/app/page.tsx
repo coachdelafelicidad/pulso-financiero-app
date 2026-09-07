@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 const SUBSCRIBE = '/subscribe'
-const COMMUNITY_URL = process.env.NEXT_PUBLIC_COMMUNITY_URL?.trim() || 'https://okomosfinanzas.com/'
+const COMMUNITY_URL = process.env.NEXT_PUBLIC_COMMUNITY_URL?.trim() || 'https://nas.com/tupulso'
 const OKOMOS_SITE = 'https://okomosfinanzas.com/'
 
 const FEATURES = [
@@ -136,9 +136,9 @@ export default function LandingPage() {
                   </h2>
                   <p className="mt-4 text-base leading-relaxed text-[#1B2624]/90">
                     El App te dice qué está pasando con tu negocio, semana a semana. La Comunidad
-                    PRO te ayuda a entender qué hacer con esa información: sesiones en vivo por
-                    Zoom dos veces al mes con Mario, un catálogo de sesiones grabadas, y un espacio
-                    para resolver dudas directamente con él.
+                    PRO en Nas.com te ayuda a entender qué hacer con esa información: sesiones en
+                    vivo por Zoom dos veces al mes con Mario, un catálogo de sesiones grabadas, y
+                    un espacio para resolver dudas directamente con él.
                   </p>
                   <p className="mt-4 text-base leading-relaxed text-[#1B2624]/90">
                     Son dos productos independientes — puedes usar el App por su cuenta, o
